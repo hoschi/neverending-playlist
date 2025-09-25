@@ -1,0 +1,2 @@
+# This file signals to type checkers that this package supports inline type hints.
+# For more information, see https://www.python.org/dev/peps/pep-0561/

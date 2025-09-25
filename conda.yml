@@ -1,0 +1,5 @@
+name: supabase-to-spotify
+channels:
+  - defaults
+dependencies:
+  - python=3.12

@@ -1,0 +1,158 @@
+[tool.poetry]
+name = "supabase-to-spotify"
+version = "0.1.0"
+description = "Supabase to Spotify"
+authors = ["Stefan Gojan"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+# Core functional libraries
+returns = {extras = ["compatible-mypy"], version = "^0.26.0"}
+# Data validation and settings management
+pydantic = "^2.11.0"
+pydantic-settings = "^2.3.4"
+# Immutable data structures
+pyrsistent = "^0.20.0"
+
+# Web and CLI entrypoints
+fastapi = "^0.116.1"
+typer = {extras = ["rich"], version = "^0.17.3"}
+uvicorn = {extras = ["standard"], version = "^0.35.0"}
+# Logging
+loguru = "^0.7.2"
+anyio = "^4.10.0"
+
+
+[tool.poetry.group.dev.dependencies]
+# Testing framework and plugins
+pytest = "^8.2.2"
+pytest-cov = "^6.0.0"
+pytest-asyncio = "^1.0.0"
+# Test data generation
+polyfactory = "^2.16.0"
+# Property-based testing
+hypothesis = "^6.108.0"
+# HTTP client for testing API
+httpx = "^0.28.0"
+# Type checking
+basedpyright = "^1.11.2"
+# Linting and formatting
+ruff = "^0.12.0"
+# Interactive notebooks
+jupyter = "^1.0.0"
+# Import cycle detection
+pylint = "^3.2.5"
+mypy = "^1.17.1"
+poethepoet = "^0.37.0"
+nbstripout = "^0.8.1"
+nbval = "^0.11.0"
+
+[tool.poetry.scripts]
+start-api = "src.shell.api:main"
+start-cli = "src.shell.cli:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+# --- Tool Configurations ---
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # Pyflakes (incl. F401: unused import, F841: unused variable)
+    "W",  # pycodestyle warnings
+    "I",  # isort (Import-sorting)
+    "UP", # pyupgrade (modernizes syntax)
+    "B",  # flake8-bugbear (finds logic errors)
+    "SIM",# flake8-simplify (simplifies code)
+    "ARG",# flake8-unused-arguments (finds unused arguments)
+]
+ignore = ["E501"] # Line length is handled by the formatter
+
+[tool.ruff.lint.per-file-ignores]
+"src/__init__.py" = ["F401"]
+"src/core/__init__.py" = ["F401"]
+"src/entrypoints/__init__.py" = ["F401"]
+"tests/__init__.py" = ["F401"]
+
+[tool.pylint]
+disable = "all"
+enable = "cyclic-import"
+
+[tool.mypy]
+plugins = ["returns.contrib.mypy.returns_plugin"]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+warn_unreachable = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+strict = true
+show_error_codes = true
+files = ["src/"]
+
+[tool.basedpyright]
+include = ["src", "tests"]
+exclude = ["**/__pycache__", ".venv"]
+typeCheckingMode = "off"
+useLibraryCodeForTypes = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "-ra",
+    "-q",
+    "--cov=src",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-report=term-missing",
+    "--cov-fail-under=95",
+]
+testpaths = ["tests", "docs"]
+asyncio_mode = "auto"
+
+[tool.pytest.nbval]
+sanitize_metadata = ["execution_count", "metadata.pid", "metadata.user"]
+
+[tool.coverage.run]
+omit = [
+    "./src/core/logging_config.py",
+]
+
+[tool.poe.tasks]
+format = "ruff format ."
+lint = "ruff check --fix ."
+typecheck-basedpyright = "basedpyright"
+typecheck-mypy = "mypy"
+test = "pytest"
+test-with-jupyter = "pytest --nbval"
+
+ci = [
+    "format",
+    "lint",
+    "typecheck-basedpyright",
+    "typecheck-mypy",
+    "test-with-jupyter"
+]
+check-all = [
+    "format",
+    "lint",
+    "typecheck-basedpyright",
+    "typecheck-mypy",
+    "test"
+]
+typecheck = ["typecheck-basedpyright", "typecheck-mypy"]
+quick-check = ["format", "lint", "typecheck-basedpyright"]
