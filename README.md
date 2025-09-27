@@ -1,16 +1,4 @@
-# Functional Python Blueprint
-
-[![Code Quality Check](https://github.com/hoschi/python-starter/actions/workflows/quality.yml/badge.svg)](https://github.com/hoschi/python-starter/actions/workflows/quality.yml)
-
-This project is a highly opinionated, modern blueprint for building robust, type-safe, and maintainable Python applications using a pragmatic functional approach.
-
-## Project Philosophy
-
-1.  **Type Safety as a Foundation:** Every line of code is statically analyzable. The strictest mode of the best tools is the default, not the exception.
-2.  **Functional, Not Dogmatic:** We use functional concepts (Pipelines, `Result` types, Immutability) where they improve clarity and maintainability, without sacrificing readability for Python developers.
-3.  **AI-Assistant Optimized:** A single source of configuration (`pyproject.toml`) and clearly defined code structures make it easy for AI tools to understand the context and generate high-quality, compliant code.
-4.  **Clear Boundaries:** We use `Pydantic` as a robust "shield" that separates the unpredictable outside world (APIs, DBs) from our clean, internal domain logic.
-5.  **Modular and Scalable:** The structure is designed from the ground up to support various entrypoints (CLI, API, Agent-Loop) that all reuse the same core logic.
+# Supabase to Spotify
 
 ## Project Setup
 
@@ -22,72 +10,18 @@ This project is a highly opinionated, modern blueprint for building robust, type
 ### 2. Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/hoschi/python-starter.git <Your-Project-Name>
-cd <Your-Project-Name>
-```
-
-Change project name 'py-starter' to yours in
-- `pyproject.toml`
-- `conda.yml`
-
-```bash
 # Create and activate the conda environment
 conda env create --file conda.yml
-conda activate py-starter
+conda activate supabase-to-spotify
 
 # Install dependencies using Poetry
 poetry install
 
 # add git filter for Jupyter notebooks
 nbstripout --install
-
-rm -rf .git/
-# check the files and add to the `.gitignore` files which you don't want to be in git
-git init
-git add .
-git commit -m "init"
 ```
 
 ## Daily Work
-
-### Running the Applications
-Die Web-API ist mit FastAPI implementiert und bietet folgende Funktionen:
-
-**Starten der API:**
-```bash
-poetry run start-api
-```
-Dadurch wird die Anwendung unter http://localhost:6163 gestartet.
-
-**Verfügbare Endpunkte:**
-
-- `GET /users/{user_id}`
-	- Gibt einen Benutzer mit der angegebenen ID zurück.
-	- Antwort: JSON-Objekt mit Feldern `id`, `name`, `age`.
-	- Beispiel: `curl http://localhost:6361/users/1`
-
-- `GET /transform/?text=...`
-	- Transformiert einen Text (z.B. Normalisierung, Beispiel siehe Code).
-	- Antwort: JSON mit `original` und `transformed`.
-	- Beispiel: `curl 'http://localhost:6361/transform/?text=Hallo%20Welt'`
-
-**Fehlerbehandlung:**
-- Bei nicht gefundenem Benutzer wird ein Fehler 404 zurückgegeben.
-- Bei ungültigen Eingaben im Transform-Endpunkt Fehler 400.
-
-**Weitere Hinweise:**
-- Die API nutzt ein In-Memory-User-Repository (nur Demo-Zwecke).
-
-**Start the CLI:**
-```bash
-poetry run start-cli --help
-```
-This will show you the available commands. For example:
-```bash
-poetry run start-cli get-user 1
-poetry run start-cli transform "  Some Text  "
-```
 
 ### Running Quality Checks
 
