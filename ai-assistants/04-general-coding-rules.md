@@ -9,8 +9,6 @@
       - Implementiere Logik als **freie Funktionen** außerhalb der Datenklassen
       - Funktionen nehmen Datenstrukturen als Parameter entgegen
       - Funktionen geben neue, unveränderliche Datenstrukturen zurück (keine In-Place-Mutation)
-    - **Polymorphismus:**
-      - Verwende `Protocol` für Interfaces statt Vererbung
       - Nutze `TypeVar` und Generics für wiederverwendbare Funktionen
       - Pattern Matching mit `match`/`case` für unterschiedliches Verhalten basierend auf Datentypen, bei `mypy` Problemen mit Type Narrowing benutzen normale conditionals da diese besser funktionieren.
     - **Verboten:**
@@ -27,6 +25,9 @@
     - **Organisation:**
       - Gruppiere verwandte Funktionen in Modulen (z.B. `user_operations.py`)
       - Nutze Namespaces durch Module statt Klassen
+- **Polymorphismus:**
+  - Verwende `Protocol` für Interfaces statt Vererbung – **aber nur, wenn mehrere Implementierungen wirklich gebraucht werden** (z.B. für Test-Doubles, verschiedene Backends). Für einfache Services mit nur einer Implementierung bleibe beim "functional first"-Ansatz (freie Funktionen, reine Datenstrukturen). Das Protocol-Muster ist kein Selbstzweck und darf nicht für triviale Fälle verwendet werden.
+  - **Functional-First bleibt Standard:** Auch wenn das Protocol-Muster verwendet wird, gelten **alle Functional-First-Regeln** weiterhin: Daten und Logik müssen strikt getrennt bleiben, keine zustandsbehafteten Klassen, keine Methoden außer Magic Methods, keine In-Place-Mutation. Protocols dienen nur als Interface, nicht als Ausrede für OOP-Designs oder Service-Klassen mit Zustand!
 - **Strict Typing:** Jeder Code muss vollständig mit `MyPy` im `strict`-Modus validieren. Vermeide `Any`.
 - **Error Handling:** Verwende **IMMER** `returns` für Operationen, die fehlschlagen können. Wirf keine Exceptions für erwartbare Fehler.
   - *Zweck & Beispiel:* Um sicherzustellen, dass alle Fehlerfälle im Typsystem abgebildet und behandelt werden müssen. Siehe die lauffähigen Beispiele in `docs/01_core_concepts.ipynb`.
