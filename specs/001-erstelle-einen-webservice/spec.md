@@ -1,3 +1,21 @@
+## Clarifications
+### Session 2025-10-03
+- Q: Soll die Aktualisierung der `state`- und `last_changed`-Felder in der Supabase-Tabelle für alle Songs atomar erfolgen (d. h. entweder alle Updates werden übernommen oder keine), oder ist es akzeptabel, dass einzelne Einträge auch bei Fehlern teilweise aktualisiert werden? → A: Atomar: Alle Updates in einer Transaktion, bei Fehler Rollback
+- Q: Wie wird die Eindeutigkeit eines Song-Eintrags in der Supabase-Tabelle bestimmt? Gibt es einen eindeutigen Primärschlüssel (z. B. `id`), oder ist die Kombination aus `artist`, `song` und `airtime` eindeutig? → A: `airtime` ist der Primärschlüssel
+- Q: Gibt es ein Ziel für die maximale Verarbeitungszeit (Latenz) pro Request, z. B. für 1000 Songs? Falls ja, bitte Wert angeben. → A: gibt es nicht
+- Q: Wie soll der Service reagieren, wenn das Hinzufügen eines Songs zu Spotify wegen eines temporären API-Limits (Rate Limiting) fehlschlägt? → A: Song auf „error“ setzen, Rest weiterverarbeiten
+- Q: Werden im Service personenbezogene Daten verarbeitet, die besonderen Datenschutzanforderungen (z. B. DSGVO) unterliegen? → A: Nein, keine personenbezogenen Daten
+## Clarifications
+### Session 2025-10-03
+- Q: Soll die Aktualisierung der `state`- und `last_changed`-Felder in der Supabase-Tabelle für alle Songs atomar erfolgen (d. h. entweder alle Updates werden übernommen oder keine), oder ist es akzeptabel, dass einzelne Einträge auch bei Fehlern teilweise aktualisiert werden? → A: Atomar: Alle Updates in einer Transaktion, bei Fehler Rollback
+- Q: Wie wird die Eindeutigkeit eines Song-Eintrags in der Supabase-Tabelle bestimmt? Gibt es einen eindeutigen Primärschlüssel (z. B. `id`), oder ist die Kombination aus `artist`, `song` und `airtime` eindeutig? → A: `airtime` ist der Primärschlüssel
+- Q: Gibt es ein Ziel für die maximale Verarbeitungszeit (Latenz) pro Request, z. B. für 1000 Songs? Falls ja, bitte Wert angeben. → A: gibt es nicht
+- Q: Wie soll der Service reagieren, wenn das Hinzufügen eines Songs zu Spotify wegen eines temporären API-Limits (Rate Limiting) fehlschlägt? → A: Song auf „error“ setzen, Rest weiterverarbeiten
+## Clarifications
+### Session 2025-10-03
+- Q: Soll die Aktualisierung der `state`- und `last_changed`-Felder in der Supabase-Tabelle für alle Songs atomar erfolgen (d. h. entweder alle Updates werden übernommen oder keine), oder ist es akzeptabel, dass einzelne Einträge auch bei Fehlern teilweise aktualisiert werden? → A: Atomar: Alle Updates in einer Transaktion, bei Fehler Rollback
+- Q: Wie wird die Eindeutigkeit eines Song-Eintrags in der Supabase-Tabelle bestimmt? Gibt es einen eindeutigen Primärschlüssel (z. B. `id`), oder ist die Kombination aus `artist`, `song` und `airtime` eindeutig? → A: `airtime` ist der Primärschlüssel
+- Q: Gibt es ein Ziel für die maximale Verarbeitungszeit (Latenz) pro Request, z. B. für 1000 Songs? Falls ja, bitte Wert angeben. → A: gibt es nicht
 # Feature Specification: Supabase-Spotify Playlist Bridge
 
 **Feature Branch**: `001-erstelle-einen-webservice`
@@ -26,11 +44,15 @@ As a system administrator, I want to trigger a webservice endpoint to synchroniz
     **Then** the service returns an HTTP 404 status with a message "No songs to process."
 
 ### Edge Cases
+-   **Spotify Rate Limiting**: Schlägt das Hinzufügen eines Songs zu Spotify wegen eines temporären API-Limits fehl, wird der betroffene Song auf "error" gesetzt und die Verarbeitung der restlichen Songs fortgesetzt.
 -   **Invalid `max_count`**: What happens when `max_count` is set to `0` or a negative number? The system should reject the request with an HTTP 400 error.
--   **Playlist Not Found**: How does the system handle a situation where the configured Spotify playlist ID is invalid or the playlist doesn't exist? It should return an HTTP 404 error, as the operation cannot be completed.
--   **Communication Failure**: What happens if the connection to Supabase or Spotify is lost mid-process? The process should halt, and a generic HTTP 500 error should be returned. Any transactions should be handled gracefully to avoid partial data updates where possible. [NEEDS CLARIFICATION: Is transactional integrity required for Supabase updates?]
+-   **Playlist Not Found**: How does the system handle eine ungültige oder nicht existierende Spotify-Playlist-ID? Es wird ein HTTP 404 Fehler zurückgegeben.
+-   **Communication Failure**: Was passiert bei Verbindungsabbruch zu Supabase oder Spotify? Der Prozess wird abgebrochen, ein generischer HTTP 500 Fehler zurückgegeben. **Alle Supabase-Updates müssen atomar erfolgen:** Entweder werden alle betroffenen Einträge gemeinsam aktualisiert (Commit), oder bei Fehlern erfolgt ein vollständiger Rollback. Teilweise Updates sind nicht zulässig.
 
 ## Requirements *(mandatory)*
+### Non-Functional Requirements
+-   Es gibt kein explizites Performance-Limit für die maximale Verarbeitungszeit pro Request.
+-   Es werden keine personenbezogenen Daten verarbeitet; besondere Datenschutzanforderungen (z. B. DSGVO) sind nicht relevant.
 
 ### Functional Requirements
 -   **FR-001**: The system MUST expose a single, unauthenticated HTTP endpoint to trigger the synchronization process.
@@ -50,12 +72,17 @@ As a system administrator, I want to trigger a webservice endpoint to synchroniz
 -   **FR-015**: The system MUST return an HTTP 404 status if no songs with an empty `state` are found.
 -   **FR-016**: The system MUST return an HTTP 404 status if the configured Spotify playlist is not found.
 -   **FR-017**: The system MUST return an HTTP 500 status for any unhandled communication errors with external services.
+-   **FR-018**: Die Aktualisierung der `state`- und `last_changed`-Felder in der Supabase-Tabelle MUSS atomar für alle verarbeiteten Songs erfolgen (Transaktion). Bei Fehlern dürfen keine teilweisen Updates persistiert werden.
 
 ### Key Entities *(include if feature involves data)*
 -   **Song Request**: Represents a single song entry from the Supabase database.
-    -   **Attributes**: `artist` (text), `song` (text), `airtime` (timestamp), `state` (text, e.g., "added", "not_found", "error"), `last_changed` (timestamp).
-
----
+    -   **Attributes**: `artist` (text), `song` (text), `airtime` (timestamp, Primärschlüssel), `state` (text, e.g., "added", "not_found", "error"), `last_changed` (timestamp).
+## Clarifications
+### Session 2025-10-03
+- Q: Soll die Aktualisierung der `state`- und `last_changed`-Felder in der Supabase-Tabelle für alle Songs atomar erfolgen (d. h. entweder alle Updates werden übernommen oder keine), oder ist es akzeptabel, dass einzelne Einträge auch bei Fehlern teilweise aktualisiert werden? → A: Atomar: Alle Updates in einer Transaktion, bei Fehler Rollback
+- Q: Wie wird die Eindeutigkeit eines Song-Eintrags in der Supabase-Tabelle bestimmt? Gibt es einen eindeutigen Primärschlüssel (z. B. `id`), oder ist die Kombination aus `artist`, `song` und `airtime` eindeutig? → A: `airtime` ist der Primärschlüssel
+### Session 2025-10-03
+- Q: Soll die Aktualisierung der `state`- und `last_changed`-Felder in der Supabase-Tabelle für alle Songs atomar erfolgen (d. h. entweder alle Updates werden übernommen oder keine), oder ist es akzeptabel, dass einzelne Einträge auch bei Fehlern teilweise aktualisiert werden? → A: Atomar: Alle Updates in einer Transaktion, bei Fehler Rollback
 
 ## Review & Acceptance Checklist
 *GATE: Automated checks run during main() execution*
