@@ -1,0 +1,42 @@
+openapi: 3.0.3
+info:
+  title: Supabase-Spotify Playlist Bridge API
+  version: 1.0.0
+paths:
+  /sync-playlist:
+    post:
+      summary: Synchronisiert neue Songs aus Supabase mit einer Spotify-Playlist
+      parameters:
+        - in: query
+          name: max_count
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5000
+          required: false
+          description: Maximale Anzahl der zu verarbeitenden Songs (Standard: 5000)
+      responses:
+        '200':
+          description: Erfolgreich synchronisiert
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Ungültige Anfrage (z.B. max_count <= 0, Playlist nicht gefunden)
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: Keine Songs zu verarbeiten oder Playlist nicht gefunden
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Interner Fehler oder Fehler beim Hinzufügen zu Spotify
+          content:
+            text/plain:
+              schema:
+                type: string
