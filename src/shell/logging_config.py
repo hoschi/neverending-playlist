@@ -2,11 +2,12 @@ import sys
 
 from loguru import logger
 
-from src.core.config import settings
+from src.core.config import get_settings
 
 
 def setup_logging() -> None:  # pragma: no cover
     """Configures the Loguru logger based on application settings."""
+    settings = get_settings()
     logger.remove()  # Remove default handler to reconfigure cleanly.
 
     # Console logger with an informative format and colors

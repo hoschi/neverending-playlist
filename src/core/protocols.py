@@ -1,21 +1,25 @@
-from typing import Protocol, TypeVar
+from typing import Protocol
 
-from returns.future import future_safe
+from returns.result import Result
 
-# TypeVars for generic keys and return values
-KeyType = TypeVar("KeyType", contravariant=True)
-ReturnType = TypeVar("ReturnType", covariant=True)
+from src.core.models import SongRequest
 
 
-class Fetcher(Protocol[KeyType, ReturnType]):
-    """
-    A generic contract for any component that can fetch data by a key.
-    This could be a DB client, an API client, or an in-memory cache.
-    """
+class SupabaseClient(Protocol):
+    """Protocol for interacting with the Supabase database."""
 
-    @future_safe
-    async def fetch_by_id(
-        self, key: KeyType
-    ) -> (
-        ReturnType
-    ): ...  # The '...' is intentional; Protocols only define the signature.
+    async def fetch_pending_song_requests(
+        self, max_count: int
+    ) -> Result[list[SongRequest], Exception]: ...
+
+    async def update_song_requests_as_added(
+        self, song_requests: list[SongRequest]
+    ) -> Result[None, Exception]: ...
+
+
+class SpotifyClient(Protocol):
+    """Protocol for interacting with the Spotify API."""
+
+    async def add_songs_to_playlist(
+        self, songs: list[SongRequest]
+    ) -> Result[None, Exception]: ...

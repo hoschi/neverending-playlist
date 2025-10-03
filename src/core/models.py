@@ -1,25 +1,19 @@
-from typing import Annotated, Any
-
 from pydantic import BaseModel, Field
 
 
-class User(BaseModel):
-    """
-    Represents a user in the system.
-    Uses `Annotated` for clean metadata that is interpreted by Pydantic.
-    """
+class Song(BaseModel):
+    """Represents a song with artist and title."""
 
-    id: int
-
-    # The type is `str`, enriched with metadata from Pydantic's `Field`.
-    # Other tools could also add annotations here.
-    name: Annotated[str, Field(min_length=2, description="The user's name")]
-
-    age: Annotated[int, Field(gt=0, le=120, description="Age in years")]
+    artist: str = Field(..., description="The artist of the song.")
+    title: str = Field(..., description="The title of the song.")
 
 
-class ApiResponse(BaseModel):
-    """A generic API response model."""
+class SongRequest(BaseModel):
+    """Represents a user's song request."""
 
-    status: str
-    data: dict[str, Any] | None = None
+    id: int = Field(..., description="The unique identifier for the song request.")
+    song: Song = Field(..., description="The song being requested.")
+    requested_by: str = Field(..., description="The user who requested the song.")
+    is_added: bool = Field(
+        default=False, description="Whether the song has been added to the playlist."
+    )

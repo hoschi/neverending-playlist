@@ -1,5 +1,13 @@
 # Supabase to Spotify
 
+This project provides a web service to synchronize song requests from a Supabase database to a Spotify playlist.
+
+## Features
+
+- **Playlist Synchronization**: A FastAPI endpoint (`POST /sync-playlist`) fetches pending song requests from a Supabase table, finds the corresponding tracks on Spotify, and adds them to a specified playlist.
+- **Configurable**: All external service credentials and settings are managed via a `.env` file.
+- **Robust & Testable**: Built with a "Functional Core, Imperative Shell" architecture, ensuring the business logic is isolated and easily testable. It uses the `returns` library for explicit, railway-oriented error handling.
+
 ## Project Setup
 
 ### 1. Prerequisites
@@ -21,7 +29,17 @@ poetry install
 nbstripout --install
 ```
 
+### 3. Configuration
+1. Copy `.env.example` to `.env`.
+2. Fill in your Supabase and Spotify API credentials in the `.env` file.
+
 ## Daily Work
+
+### Running the Service
+To start the web service, run the following command:
+```bash
+poetry run uvicorn src.shell.api:app --reload
+```
 
 ### Running Quality Checks
 
