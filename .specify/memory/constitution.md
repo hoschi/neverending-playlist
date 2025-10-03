@@ -26,7 +26,23 @@ The project is strictly divided into a `src/core` containing pure, stateless bus
 All code MUST pass `mypy --strict` validation. Type hints are non-negotiable for all functions, variables, and data structures. The use of `Any` is forbidden unless explicitly justified for interoperability with untyped libraries.
 
 ### III. Functional & Immutable by Default
-Code should be written in a functional style, emphasizing pure functions that receive data, transform it, and return new data without side effects. All data structures (e.g., Pydantic models, dataclasses) MUST be immutable (`frozen=True`). State changes are achieved by creating new instances, not by mutating existing ones.
+Code must be written in a functional style, separating data from behavior. Data structures must be **treated as if they were immutable**.
+- **Data Structures:**
+  - Data classes (like Pydantic Models or dataclasses) must NOT contain methods, except for `__post_init__` for validation.
+- **Behavior:**
+  - Logic MUST be implemented as **free functions** outside of data classes.
+  - State changes are achieved by creating new instances, not by mutating existing ones.
+- **Truly Immutable Structures:**
+  - The `pyrsistent` library should only be used for performance-critical reasons where its structural sharing provides a significant benefit. Its use must be explicitly specified in a task.
+- **Prohibited:**
+  - Classes with methods (except for allowed magic methods).
+  - Inheritance of classes for code reuse.
+  - Stateful classes with `self` mutation.
+  - Service classes with `__init__` and instance variables.
+- **Allowed Exceptions:**
+  - `Pydantic` validators and `Config` in models (for data boundaries).
+  - Magic methods for Python protocols (`__str__`, `__repr__`, `__eq__`, `__hash__`).
+  - Properties for computed read-only fields (to be used sparingly).
 
 ### IV. Railway Oriented Programming for Error Handling
 Expected errors (e.g., validation failures, network errors) MUST be handled using the `returns.Result` monad. Functions that can fail must return a `Result[SuccessType, FailureType]`, making error paths explicit in the type system. Exceptions should only be used for unrecoverable system errors.
@@ -54,7 +70,7 @@ Logging MUST be implemented using `Loguru` for its structured, configurable, and
 
 The standard development workflow is as follows:
 1.  Define data structures and protocols in `src/core`.
-2.  Implement pure business logic as functions in `src/core/services/`.
+2.  Implement pure business logic as functions in `src/core/services/`. Group related functions in modules (e.g., `user_operations.py`). Use namespaces through modules instead of classes.
 3.  Write comprehensive tests in `tests/core` that cover all logic.
 4.  Implement the imperative shell in `src/shell` (e.g., API endpoints, CLI commands) that calls the core services.
 5.  Write integration tests for the shell in `tests/shell`.
@@ -64,4 +80,4 @@ The standard development workflow is as follows:
 
 This Constitution is the single source of truth for the project's architecture and coding standards. All code reviews MUST enforce these principles. Any proposed deviation requires a formal amendment to this document.
 
-**Version**: 1.0.0 | **Ratified**: 2025-10-03 | **Last Amended**: 2025-10-03
+**Version**: 1.0.1 | **Ratified**: 2025-10-03 | **Last Amended**: 2025-10-03
