@@ -17,10 +17,10 @@
 
 ## Phase 3.3: Core Implementation (nur nach fehlschlagenden Tests)
 - [ ] T008 [P] SongRequest-Modell in `src/core/models.py` als reine Datenstruktur (keine Methoden, außer ggf. `__post_init__`) implementieren
-- [ ] T009 [P] SupabaseClient-Protocol in `src/core/protocols.py` definieren (Interface, keine Klasse mit Methoden)
-- [ ] T010 [P] SpotifyClient-Protocol in `src/core/protocols.py` definieren (Interface, keine Klasse mit Methoden)
-- [ ] T011 [P] Freie Funktion `fetch_pending_song_requests` in `src/core/services.py` implementieren (nimmt Protocol-Instanz als Parameter)
-- [ ] T012 [P] Freie Funktion `add_song_to_spotify` in `src/core/services.py` implementieren (nimmt Protocol-Instanz als Parameter)
+- [ ] T009 [P] Define pure function signatures (with type hints) for Supabase and Spotify interactions in `src/core/services.py` (no Protocols, only functions and type annotations, as only one implementation is required)
+- [ ] T010 [P] Implement explicit test doubles (mock functions) for Supabase and Spotify interactions in the respective test files (`tests/unit/test_services.py`), without using Protocols
+- [ ] T011 [P] Freie Funktion `fetch_pending_song_requests` in `src/core/services.py` implementieren
+- [ ] T012 [P] Freie Funktion `add_song_to_spotify` in `src/core/services.py` implementieren
 - [ ] T013 [P] Fehlerbehandlung mit `returns.Result` in allen freien Service-Funktionen sicherstellen
 - [ ] T014 [P] Logging mit Loguru in `src/shell/logging_config.py` (nur in Shell, nicht im Core)
 
@@ -43,7 +43,7 @@
 ## Abhängigkeiten & Parallelisierung
 - Setup (T001–T004) vor allen anderen Tasks
 - Tests (T005–T007) müssen fehlschlagen, bevor Implementierung beginnt
-- Modell/Protokolle (T008–T010) vor Service-Implementierungen (T011–T012)
+- Modell (T008–T010) vor Service-Implementierungen (T011–T012)
 - Services vor API-Integration (T015–T018)
 - Polish-Tasks (T019–T022) können parallel nach Implementierung erfolgen
 - [P] = Kann parallel ausgeführt werden (unabhängige Dateien)
