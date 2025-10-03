@@ -1,6 +1,32 @@
 # General Coding Rules
 
-- **Functional First:** Schreibe reine Funktionen, wann immer möglich. Vermeide Klassen für reine Datenstrukturen. Setze das Muster "functional core, imperative shell" um, details dazu findest du in `ai-assistants/05-fcis.md`
+- **Functional First:** Setze das Muster "functional core, imperative shell" um, details dazu findest du in `ai-assistants/05-fcis.md`. Schreibe reine Funktionen, wann immer möglich. Trenne Daten und Logik konsequent. Vermeide OOP-Klassen mit Methoden.
+    - **Datenstrukturen:**
+      - Nutze `@dataclass(frozen=True)` oder `Pydantic BaseModel` **NUR** für Daten
+      - Datenklassen dürfen **KEINE** Methoden enthalten (außer `__post_init__` für Validierung)
+      - Alle Felder müssen typ-annotiert und immutable sein
+    - **Verhalten:**
+      - Implementiere Logik als **freie Funktionen** außerhalb der Datenklassen
+      - Funktionen nehmen Datenstrukturen als Parameter entgegen
+      - Funktionen geben neue, unveränderliche Datenstrukturen zurück (keine In-Place-Mutation)
+    - **Polymorphismus:**
+      - Verwende `Protocol` für Interfaces statt Vererbung
+      - Nutze `TypeVar` und Generics für wiederverwendbare Funktionen
+      - Pattern Matching mit `match`/`case` für unterschiedliches Verhalten basierend auf Datentypen, bei `mypy` Problemen mit Type Narrowing benutzen normale conditionals da diese besser funktionieren.
+    - **Verboten:**
+      - Klassen mit Methoden (außer Magic Methods wie `__str__`, `__eq__`)
+      - Vererbung von Klassen zur Code-Wiederverwendung
+      - Stateful Klassen mit `self`-Mutation
+      - Service-Klassen mit `__init__` und Instanzvariablen
+    - **Erlaubt (Ausnahmen):**
+      - `Pydantic` Validators und `Config` in Modellen (für Data Boundaries)
+      - Magic Methods für Python-Protokolle (`__str__`, `__repr__`, `__eq__`, `__hash__`)
+      - Properties für berechnete Read-Only Felder (sparsam verwenden)
+    - **Zustandsänderung:**
+      - Erzeuge neue Instanzen statt Objekte zu mutieren
+    - **Organisation:**
+      - Gruppiere verwandte Funktionen in Modulen (z.B. `user_operations.py`)
+      - Nutze Namespaces durch Module statt Klassen
 - **Strict Typing:** Jeder Code muss vollständig mit `MyPy` im `strict`-Modus validieren. Vermeide `Any`.
 - **Error Handling:** Verwende **IMMER** `returns` für Operationen, die fehlschlagen können. Wirf keine Exceptions für erwartbare Fehler.
   - *Zweck & Beispiel:* Um sicherzustellen, dass alle Fehlerfälle im Typsystem abgebildet und behandelt werden müssen. Siehe die lauffähigen Beispiele in `docs/01_core_concepts.ipynb`.
