@@ -50,8 +50,10 @@ Expected errors (e.g., validation failures, network errors) MUST be handled usin
 ### V. Data Validation at Boundaries
 All external data—from API responses, user input, or database queries—MUST be validated by Pydantic models at the application's entry points (the "imperative shell"). This ensures that the functional core operates only on trusted, type-safe data.
 
-### VI. Dependency Inversion via Protocols
-The functional core MUST NOT depend on concrete implementations. Instead, it should depend on abstract interfaces defined with `typing.Protocol`. This allows for interchangeable implementations (e.g., a real database vs. an in-memory mock) and ensures the core remains decoupled and highly testable.
+### VI. Dependency Inversion via Protocols (Only When Justified)
+The functional core MUST NOT depend on concrete implementations. Instead, it should depend on abstract interfaces defined with `typing.Protocol`—**but only when multiple implementations are actually needed** (e.g., for test doubles, alternative backends, or true extensibility). In most cases, pure functions and data structures are sufficient and preferred. Do **not** introduce a `Protocol` for simple services or API clients that have only one implementation and are unlikely to require more. Unnecessary Protocols add complexity and violate the project's functional-first philosophy.
+
+> **Warning:** The Protocol pattern is not a default. It must not be used as an excuse for OOP-style service classes, stateful objects, or for cases where a single implementation suffices. Even when Protocols are used, all functional-first rules apply: data and logic must remain strictly separated, no stateful classes, and no in-place mutation. Protocols are for interface abstraction only, not for building OOP service layers.
 
 ### VII. Comprehensive and Automated Testing
 Every piece of business logic MUST be fully tested to achieve 100% line and branch coverage. The testing strategy includes:
