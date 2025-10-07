@@ -15,10 +15,16 @@ class Settings(BaseSettings):
     supabase_key: str
 
     # Spotify
-    spotify_client_id: str
-    spotify_client_secret: str
-    spotify_redirect_uri: str
+    spotipy_client_id: str
+    spotipy_client_secret: str
+    spotipy_redirect_uri: str
     spotify_playlist_id: str
+
+    # Spotify User Authorization
+    spotify_refresh_token: str | None = None
+
+    # Encryption
+    encryption_key: str
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"

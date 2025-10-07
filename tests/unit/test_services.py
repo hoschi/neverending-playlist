@@ -3,7 +3,10 @@ from returns.result import Failure, Result, Success
 
 from src.core.models import Song, SongRequest
 from src.core.protocols import SpotifyClient, SupabaseClient
-from src.core.services import add_songs_to_spotify, sync_playlist
+from src.core.services.playlist_service import (
+    add_songs_to_spotify,
+    sync_playlist,
+)
 
 
 class MockSupabaseClient(SupabaseClient):

@@ -1,8 +1,29 @@
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Poetry
+.venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Test artifacts
+.pytest_cache/
+htmlcov/
 .coverage
-.hypothesis/
 coverage.xml
-logs/
-__pycache__
-.coverage
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# VSCode
 .vscode/
 .gemini/
