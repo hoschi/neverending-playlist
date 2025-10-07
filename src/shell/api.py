@@ -1,42 +1,26 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import cast
+from typing import Annotated
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from loguru import logger
-from returns.future import FutureResult, FutureResultE
-from returns.io import IOResultE, IOSuccess
-from returns.result import Failure, Success
-from returns.unsafe import unsafe_perform_io
+from returns.pipeline import is_successful
 
-from src.core.models import User
-from src.core.services import example_transform_service, get_user_details
+from src.core.protocols import SpotifyClient, SupabaseClient
+from src.core.services import sync_playlist
+from src.shell.clients import ConcreteSpotifyClient, ConcreteSupabaseClient
 from src.shell.logging_config import setup_logging
 
 
-# This is a *concrete* implementation that satisfies the Fetcher protocol.
-# Important: It does NOT need to inherit from `Fetcher`!
-class InMemoryUserFetcher:
-    """A concrete implementation of a user fetcher that uses an in-memory dictionary."""
-
-    _users = {
-        1: User(id=1, name="Alice", age=30),
-        2: User(id=2, name="Bob", age=25),
-    }
-
-    def fetch_by_id(self, key: int) -> FutureResultE[User]:
-        logger.info(f"Fetching user {key} from in-memory store.")
-        user = self._users.get(key)
-        if user is None:
-            return FutureResult.from_failure(
-                ValueError(f"No user found with id: {key}")
-            )
-
-        return FutureResult.from_value(user)
+def get_supabase_client() -> SupabaseClient:
+    """FastAPI dependency provider for the Supabase client."""
+    return ConcreteSupabaseClient()
 
 
-user_fetcher: InMemoryUserFetcher = InMemoryUserFetcher()  # Instance is created here
+def get_spotify_client() -> SpotifyClient:
+    """FastAPI dependency provider for the Spotify client."""
+    return ConcreteSpotifyClient()
 
 
 @asynccontextmanager
@@ -49,34 +33,19 @@ async def lifespan(_: object) -> AsyncGenerator[None, None]:  # pragma: no cover
 app: FastAPI = FastAPI(lifespan=lifespan)
 
 
-@app.get("/users/{user_id}", response_model=User)
-async def read_user(user_id: int) -> User:
-    """
-    API endpoint to retrieve a user by their ID.
-    It uses the core service function to fetch the data.
-    """
-    result: IOResultE[User] = await get_user_details(user_fetcher, user_id).awaitable()
+@app.post("/sync-playlist")
+async def sync_playlist_endpoint(
+    supabase_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
+    spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
+    max_count: int = Query(10, gt=0, le=50),
+) -> dict[str, str | int]:
+    """API endpoint to synchronize the playlist."""
+    result = await sync_playlist(supabase_client, spotify_client, max_count)
 
-    if isinstance(result, IOSuccess):
-        success: IOSuccess[User] = cast(IOSuccess[User], result)
-        return unsafe_perform_io(success.unwrap())
-    else:
-        raise HTTPException(
-            status_code=404, detail=str(unsafe_perform_io(result.failure()))
-        )
+    if not is_successful(result):
+        raise HTTPException(status_code=500, detail=str(result.failure()))
 
-
-@app.get("/transform/")
-async def transform_text(text: str) -> dict[str, str]:
-    """API endpoint to demonstrate a simple transformation service."""
-    result = example_transform_service(text)
-    match result:
-        case Success(transformed_text):
-            return {"original": text, "transformed": transformed_text}
-        case Failure(error):
-            raise HTTPException(status_code=400, detail=str(error))
-        case _:  # pragma: no cover
-            raise HTTPException(status_code=500, detail="Unbekannter Fehler")
+    return {"status": "success", "songs_added": result.unwrap()}
 
 
 def main() -> None:  # pragma: no cover

@@ -1,44 +1,69 @@
 from loguru import logger
-from returns import pointfree as p
-from returns.future import FutureResultE
-from returns.pipeline import flow, pipe
-from returns.result import Failure, Result, Success
+from returns.pipeline import is_successful
+from returns.result import Result, Success
 
-from src.core.models import User
-from src.core.protocols import Fetcher
+from src.core.models import SongRequest
+from src.core.protocols import SpotifyClient, SupabaseClient
 
 
-def example_transform_service(text: str) -> Result[str, ValueError]:
-    """
-    An example of a pure function for data transformation.
-    This function is easily testable and has no side effects.
-    """
-    logger.debug(f"Transforming text: '{text}'")
-
-    return flow(
-        text,
-        # force error to be able to test this example code
-        lambda s: Failure(ValueError(text)) if s == "error" else Success(s),
-        # if not do the thing!
-        p.map_(
-            pipe(
-                lambda s: s.strip(),
-                lambda s: s.lower(),
-                lambda s: f"transformed: {s}",
-            )
-        ),
+async def fetch_pending_song_requests(
+    supabase_client: SupabaseClient, max_count: int
+) -> Result[list[SongRequest], Exception]:
+    """Fetches a list of pending song requests from Supabase."""
+    logger.info(
+        "Fetching up to {max_count} pending song requests.", max_count=max_count
     )
+    return await supabase_client.fetch_pending_song_requests(max_count)
 
 
-# Richtig: Wir nutzen Dependency Inversion und programmieren gegen den abstrakten Fetcher-Protocol.
-# Falsch wäre: eine konkrete Klasse wie `SupabaseFetcher` hier zu importieren,
-# da dies unsere Kernlogik an eine externe Implementierung koppeln würde.
-def get_user_details(
-    user_fetcher: Fetcher[int, User],  # Programming against the abstraction!
-    user_id: int,
-) -> FutureResultE[User]:
+async def add_songs_to_spotify(
+    spotify_client: SpotifyClient, songs: list[SongRequest]
+) -> Result[None, Exception]:
+    """Adds a list of songs to the Spotify playlist."""
+    if not songs:
+        return Success(None)
+    logger.info("Adding {count} songs to Spotify.", count=len(songs))
+    return await spotify_client.add_songs_to_playlist(songs)
+
+
+async def sync_playlist(
+    supabase_client: SupabaseClient, spotify_client: SpotifyClient, max_count: int
+) -> Result[int, Exception]:
     """
-    Fetches user details without knowing where they come from.
+    Orchestrates the synchronization of the playlist.
+    Returns the number of songs added.
     """
-    logger.info(f"Fetching details for user_id: {user_id}")
-    return user_fetcher.fetch_by_id(user_id)
+    logger.info("Starting playlist synchronization.")
+
+    requests_result = await fetch_pending_song_requests(supabase_client, max_count)
+    if not is_successful(requests_result):
+        logger.error(
+            "Playlist sync failed during fetch: {error}",
+            error=requests_result.failure(),
+        )
+        return requests_result.map(len)
+
+    requests = requests_result.unwrap()
+    if not requests:
+        logger.info("No pending requests found.")
+        return Success(0)
+
+    add_result = await add_songs_to_spotify(spotify_client, requests)
+    if not is_successful(add_result):
+        logger.error(
+            "Playlist sync failed during spotify add: {error}",
+            error=add_result.failure(),
+        )
+        return add_result.map(lambda _: len(requests))
+
+    update_result = await supabase_client.update_song_requests_as_added(requests)
+    if not is_successful(update_result):
+        logger.error(
+            "Playlist sync failed during supabase update: {error}",
+            error=update_result.failure(),
+        )
+        return update_result.map(lambda _: len(requests))
+
+    count = len(requests)
+    logger.info("Playlist sync successful. Added {count} songs.", count=count)
+    return Success(count)

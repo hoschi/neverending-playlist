@@ -23,6 +23,8 @@ uvicorn = {extras = ["standard"], version = "^0.35.0"}
 # Logging
 loguru = "^0.7.2"
 anyio = "^4.10.0"
+supabase = "^2.20.0"
+spotipy = "^2.25.1"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -130,6 +132,8 @@ sanitize_metadata = ["execution_count", "metadata.pid", "metadata.user"]
 [tool.coverage.run]
 omit = [
     "./src/core/logging_config.py",
+    "./src/shell/clients.py",
+    "./src/shell/cli.py",
 ]
 
 [tool.poe.tasks]
