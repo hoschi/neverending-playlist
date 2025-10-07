@@ -1,8 +1,7 @@
+# Implementation Plan: Authorization Code Flow
 
-# Implementation Plan: [FEATURE]
-
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
-**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+**Branch**: `002-feature-request-authorization` | **Date**: 2025-10-07 | **Spec**: [./spec.md](./spec.md)
+**Input**: Feature specification from `/Users/hoschi/repos/supabase-to-spotify/specs/002-feature-request-authorization/spec.md`
 
 ## Execution Flow (/plan command scope)
 ```
@@ -31,29 +30,37 @@
 - Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
-[Extract from feature spec: primary requirement + technical approach from research]
+The feature requires implementing the OAuth 2.0 Authorization Code Flow to allow the application to act on behalf of a user. This will replace the existing Client Credentials Flow. The technical approach is to use the `spotipy` library with its `SpotifyOAuth` helper, adding web endpoints to handle the authorization redirect and callback. The refresh token will be stored securely in the `.env` file after being encrypted.
 
 ## Technical Context
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [single/web/mobile - determines source structure]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Language/Version**: Python 3.12
+**Primary Dependencies**: FastAPI, Spotipy, Pydantic, returns, Loguru
+**Storage**: `.env` file for the encrypted refresh token.
+**Testing**: pytest
+**Target Platform**: Linux server (or any OS capable of running Python)
+**Project Type**: Web Service (Backend)
+**Performance Goals**: The authorization flow is user-interactive, so callbacks should complete within a reasonable time (e.g., <2 seconds).
+**Constraints**: Must securely handle and store the refresh token.
+**Scale/Scope**: Single-user authorization model for this application.
 
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- **Functional Core, Imperative Shell (FCIS)**: Adhered to. Authorization logic will be in the `shell`, while any core logic remains pure.
+- **Strict Typing**: Adhered to. All new code will be strictly typed.
+- **Functional & Immutable by Default**: Adhered to.
+- **Railway Oriented Programming**: Adhered to for error handling in the callback.
+- **Data Validation at Boundaries**: Adhered to. The callback will validate the incoming query parameters.
+- **Dependency Inversion via Protocols**: Not required for this feature.
+- **Comprehensive and Automated Testing**: Adhered to. New endpoints and logic will be tested.
+- **Don't Repeat Yourself (DRY)**: Adhered to.
+- **Structured and Asynchronous Logging**: Adhered to for logging authorization events.
 
 ## Project Structure
 
 ### Documentation (this feature)
 ```
-specs/[###-feature]/
+specs/002-feature-request-authorization/
 ├── plan.md              # This file (/plan command output)
 ├── research.md          # Phase 0 output (/plan command)
 ├── data-model.md        # Phase 1 output (/plan command)
@@ -63,130 +70,58 @@ specs/[###-feature]/
 ```
 
 ### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
 ```
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
 src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+├── core/
+│   ├── config.py
+│   └── services/
+│       └── encryption_service.py
+└── shell/
+    ├── api.py
+    └── clients.py
 
 tests/
 ├── contract/
 ├── integration/
 └── unit/
-
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+**Structure Decision**: The project is a single web service. New logic will be added to the existing `src/core` and `src/shell` directories as appropriate, following the established FCIS architecture.
 
 ## Phase 0: Outline & Research
-1. **Extract unknowns from Technical Context** above:
-   - For each NEEDS CLARIFICATION → research task
-   - For each dependency → best practices task
-   - For each integration → patterns task
+1. **Extract unknowns from Technical Context**: Completed. No unknowns remain.
+2. **Generate and dispatch research agents**: Completed.
+3. **Consolidate findings** in `research.md`: Completed.
 
-2. **Generate and dispatch research agents**:
-   ```
-   For each unknown in Technical Context:
-     Task: "Research {unknown} for {feature context}"
-   For each technology choice:
-     Task: "Find best practices for {tech} in {domain}"
-   ```
-
-3. **Consolidate findings** in `research.md` using format:
-   - Decision: [what was chosen]
-   - Rationale: [why chosen]
-   - Alternatives considered: [what else evaluated]
-
-**Output**: research.md with all NEEDS CLARIFICATION resolved
+**Output**: `research.md` with all NEEDS CLARIFICATION resolved.
 
 ## Phase 1: Design & Contracts
 *Prerequisites: research.md complete*
 
-1. **Extract entities from feature spec** → `data-model.md`:
-   - Entity name, fields, relationships
-   - Validation rules from requirements
-   - State transitions if applicable
+1. **Extract entities from feature spec** → `data-model.md`: Completed.
+2. **Generate API contracts**: No new OpenAPI contracts are needed as the interaction is a browser-based redirect flow. The "contracts" are the `/login` and `/callback` endpoints.
+3. **Generate contract tests**: Not applicable in the traditional sense. Integration tests will serve to validate the endpoint behavior.
+4. **Extract test scenarios** from user stories → `quickstart.md`: Completed.
+5. **Update agent file incrementally**: Skipped as per instructions.
 
-2. **Generate API contracts** from functional requirements:
-   - For each user action → endpoint
-   - Use standard REST/GraphQL patterns
-   - Output OpenAPI/GraphQL schema to `/contracts/`
-
-3. **Generate contract tests** from contracts:
-   - One test file per endpoint
-   - Assert request/response schemas
-   - Tests must fail (no implementation yet)
-
-4. **Extract test scenarios** from user stories:
-   - Each story → integration test scenario
-   - Quickstart test = story validation steps
-
-5. **Update agent file incrementally** (O(1) operation):
-   - Run `.specify/scripts/bash/update-agent-context.sh gemini`
-     **IMPORTANT**: Execute it exactly as specified above. Do not add or remove any arguments.
-   - If exists: Add only NEW tech from current plan
-   - Preserve manual additions between markers
-   - Update recent changes (keep last 3)
-   - Keep under 150 lines for token efficiency
-   - Output to repository root
-
-**Output**: data-model.md, /contracts/*, failing tests, quickstart.md, agent-specific file
+**Output**: `data-model.md`, `quickstart.md`.
 
 ## Phase 2: Task Planning Approach
 *This section describes what the /tasks command will do - DO NOT execute during /plan*
 
 **Task Generation Strategy**:
-- Load `.specify/templates/tasks-template.md` as base
-- Generate tasks from Phase 1 design docs (contracts, data model, quickstart)
-- Each contract → contract test task [P]
-- Each entity → model creation task [P] 
-- Each user story → integration test task
-- Implementation tasks to make tests pass
+- The `tasks.md` file has been generated based on the design artifacts. The strategy involves setting up configuration, creating the authorization endpoints, refactoring the Spotify client to use the new auth flow, and writing corresponding tests for each component.
 
 **Ordering Strategy**:
-- TDD order: Tests before implementation 
-- Dependency order: Models before services before UI
-- Mark [P] for parallel execution (independent files)
+- The tasks are ordered to follow a logical implementation sequence: configuration first, then endpoints, then client logic, followed by integration and documentation. TDD is encouraged within each phase.
 
-**Estimated Output**: 25-30 numbered, ordered tasks in tasks.md
-
-**IMPORTANT**: This phase is executed by the /tasks command, NOT by /plan
+**Estimated Output**: A `tasks.md` file with approximately 15 tasks.
 
 ## Phase 3+: Future Implementation
 *These phases are beyond the scope of the /plan command*
 
-**Phase 3**: Task execution (/tasks command creates tasks.md)  
-**Phase 4**: Implementation (execute tasks.md following constitutional principles)  
+**Phase 3**: Task execution (/tasks command creates tasks.md)
+**Phase 4**: Implementation (execute tasks.md following constitutional principles)
 **Phase 5**: Validation (run tests, execute quickstart.md, performance validation)
 
 ## Complexity Tracking
@@ -194,26 +129,25 @@ directories captured above]
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+| N/A       | N/A        | N/A                                 |
 
 
 ## Progress Tracking
 *This checklist is updated during execution flow*
 
 **Phase Status**:
-- [ ] Phase 0: Research complete (/plan command)
-- [ ] Phase 1: Design complete (/plan command)
-- [ ] Phase 2: Task planning complete (/plan command - describe approach only)
+- [x] Phase 0: Research complete (/plan command)
+- [x] Phase 1: Design complete (/plan command)
+- [x] Phase 2: Task planning complete (/plan command - describe approach only)
 - [ ] Phase 3: Tasks generated (/tasks command)
 - [ ] Phase 4: Implementation complete
 - [ ] Phase 5: Validation passed
 
 **Gate Status**:
-- [ ] Initial Constitution Check: PASS
-- [ ] Post-Design Constitution Check: PASS
-- [ ] All NEEDS CLARIFICATION resolved
-- [ ] Complexity deviations documented
+- [x] Initial Constitution Check: PASS
+- [x] Post-Design Constitution Check: PASS
+- [x] All NEEDS CLARIFICATION resolved
+- [x] Complexity deviations documented
 
 ---
-*Based on Constitution v2.1.1 - See `/memory/constitution.md`*
+*Based on Constitution v1.0.1 - See `/.specify/memory/constitution.md`*

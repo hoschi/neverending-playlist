@@ -7,6 +7,12 @@
 
 ---
 
+## Clarifications
+### Session 2025-10-07
+- Q: How should the application securely store the user's refresh token? → A: in the .env file with encryption
+
+---
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### Primary User Story
@@ -32,7 +38,7 @@ Als Hörer möchte ich der App die Berechtigung erteilen, meine Spotify-Playlist
 - **FR-002**: Das System MUSS den Nutzer zu einer Spotify-URL weiterleiten, um die Anwendungsberechtigung zu erteilen.
 - **FR-003**: Das System MUSS den von Spotify bereitgestellten Autorisierungscode nach erfolgreicher Genehmigung empfangen und verarbeiten.
 - **FR-004**: Das System MUSS den Autorisierungscode gegen ein Access-Token und ein Refresh-Token bei Spotify austauschen.
-- **FR-005**: Das System MUSS das erhaltene Refresh-Token sicher für den jeweiligen Nutzer speichern. [NEEDS CLARIFICATION: Wo und wie genau wird das Token sicher gespeichert? z.B. verschlüsselte Datenbank]
+- **FR-005**: Das System MUSS das erhaltene Refresh-Token sicher als verschlüsselten Wert in der .env-Datei speichern.
 - **FR-006**: Das System MUSS in der Lage sein, ein abgelaufenes Access-Token automatisch mithilfe des gespeicherten Refresh-Tokens zu erneuern.
 - **FR-007**: Das System MUSS autorisierte Aktionen (z.B. Songs zu einer Playlist hinzufügen) im Namen des Nutzers unter Verwendung des Access-Tokens durchführen.
 
