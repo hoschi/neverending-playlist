@@ -31,7 +31,43 @@ nbstripout --install
 
 ### 3. Configuration
 1. Copy `.env.example` to `.env`.
-2. Fill in your Supabase and Spotify API credentials in the `.env` file.
+2. Enter your Supabase and Spotify API credentials in the `.env` file.
+
+### Linking your Spotify Account
+
+To link your Spotify account to the service, follow these steps:
+
+1. **Create a Spotify Developer Application**
+    - Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and create a new application.
+    - Copy the **Client ID** and **Client Secret** into the `SPOTIPY_CLIENT_ID` and `SPOTIPY_CLIENT_SECRET` fields in your `.env` file.
+    - Add the URI from `SPOTIPY_REDIRECT_URI` (`http://localhost:6361/callback`) to the "Redirect URIs" section in the dashboard. The URI must match exactly.
+
+2. **Enter your Playlist ID**
+    - Create a new playlist in your Spotify account.
+    - Copy the playlist ID from the URL and enter it in `SPOTIFY_PLAYLIST_ID`.
+
+3. **Generate an Encryption Key**
+    - Generate a 32-byte, URL-safe, base64-encoded key:
+      ```python
+      from cryptography.fernet import Fernet
+      key = Fernet.generate_key().decode()
+      print(key)
+      ```
+    - Add this key as `ENCRYPTION_KEY` in your `.env` file.
+
+4. **Perform OAuth Authorization**
+    - Start the web service:
+      ```bash
+      poetry run uvicorn src.shell.api:app --reload
+      ```
+    - Open `http://localhost:6361/login` in your browser.
+    - You will be redirected to Spotify to authorize the application.
+    - After successful login and approval, you will be redirected back to the application (`/callback`).
+    - The service will automatically save the encrypted `SPOTIFY_REFRESH_TOKEN` in your `.env` file.
+
+**Note:** The values for `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET`, and `SPOTIPY_REDIRECT_URI` must match exactly with the settings in the Spotify Developer Dashboard. The redirect URI must be registered there.
+
+For more details on Spotify OAuth, see the [Spotipy documentation](https://spotipy.readthedocs.io/en/latest/#authorization-code-flow) and the [Spotify Developer Guide](https://developer.spotify.com/documentation/web-api/tutorials/code-flow).
 
 ### 4. Authorization
 This application uses the OAuth 2.0 Authorization Code Flow to access your Spotify account. You must authorize it once before you can use the `/sync-playlist` endpoint.
