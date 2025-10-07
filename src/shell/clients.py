@@ -1,11 +1,13 @@
 import spotipy  # type: ignore
+from pydantic import SecretStr
 from returns.result import Result, Success
-from spotipy.oauth2 import SpotifyClientCredentials  # type: ignore
+from spotipy.oauth2 import SpotifyOAuth  # type: ignore
 from supabase import Client, create_client
 
 from src.core.config import get_settings
 from src.core.models import Song, SongRequest
 from src.core.protocols import SpotifyClient, SupabaseClient
+from src.core.services.encryption_service import EncryptionService
 
 
 class ConcreteSupabaseClient(SupabaseClient):
@@ -58,15 +60,30 @@ class ConcreteSupabaseClient(SupabaseClient):
 
 
 class ConcreteSpotifyClient(SpotifyClient):
-    """A concrete implementation of the Spotify client."""
+    """A concrete implementation of the Spotify client using user authorization."""
 
     def __init__(self) -> None:
         settings = get_settings()
-        auth_manager = SpotifyClientCredentials(
-            client_id=settings.spotify_client_id,
-            client_secret=settings.spotify_client_secret,
+        if not settings.spotify_refresh_token:
+            raise ValueError(
+                "Spotify refresh token not found in environment. "
+                "Please complete the authorization flow via the /login endpoint."
+            )
+
+        encryption_service = EncryptionService(key=SecretStr(settings.encryption_key))
+        decrypted_token = encryption_service.decrypt(settings.spotify_refresh_token)
+
+        auth_manager = SpotifyOAuth(
+            client_id=settings.spotipy_client_id,
+            client_secret=settings.spotipy_client_secret,
+            redirect_uri=settings.spotipy_redirect_uri,
+            scope="playlist-modify-public playlist-modify-private",
+            cache_path=None,  # Do not use a cache file
         )
-        self.client = spotipy.Spotify(client_credentials_manager=auth_manager)
+        # Manually prime the auth_manager with the refresh token
+        auth_manager.refresh_access_token(decrypted_token)
+
+        self.client = spotipy.Spotify(auth_manager=auth_manager)
 
     async def add_songs_to_playlist(
         self, songs: list[SongRequest]

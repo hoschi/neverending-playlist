@@ -1,10 +1,11 @@
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from returns.result import Result
 
 from src.core.models import SongRequest
 
 
+@runtime_checkable
 class SupabaseClient(Protocol):
     """Protocol for interacting with the Supabase database."""
 
@@ -17,6 +18,7 @@ class SupabaseClient(Protocol):
     ) -> Result[None, Exception]: ...
 
 
+@runtime_checkable
 class SpotifyClient(Protocol):
     """Protocol for interacting with the Spotify API."""
 

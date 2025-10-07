@@ -33,6 +33,25 @@ nbstripout --install
 1. Copy `.env.example` to `.env`.
 2. Fill in your Supabase and Spotify API credentials in the `.env` file.
 
+### 4. Authorization
+This application uses the OAuth 2.0 Authorization Code Flow to access your Spotify account. You must authorize it once before you can use the `/sync-playlist` endpoint.
+
+1.  **Configure Environment**: Ensure your `.env` file has the correct `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET`, and `SPOTIPY_REDIRECT_URI`. The `SPOTIPY_REDIRECT_URI` must match what you have configured in your Spotify Developer Dashboard.
+2.  **Generate Encryption Key**: You need a 32-byte, URL-safe, base64-encoded encryption key. You can generate one with the following Python code:
+    ```python
+    from cryptography.fernet import Fernet
+    key = Fernet.generate_key().decode()
+    print(key)
+    ```
+    Add this key to your `.env` file as `ENCRYPTION_KEY`.
+3.  **Authorize the Application**:
+    - Start the web service: `poetry run uvicorn src.shell.api:app --reload`
+    - Open your browser and navigate to `http://localhost:6361/login`.
+    - You will be redirected to Spotify to log in and grant permission.
+    - After you approve, you will be redirected back to the application's `/callback` endpoint.
+
+Upon successful authorization, the application will automatically encrypt and save a `SPOTIFY_REFRESH_TOKEN` to your `.env` file. The service will use this token to stay logged in.
+
 ## Daily Work
 
 ### Running the Service
