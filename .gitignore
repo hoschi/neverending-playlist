@@ -27,3 +27,5 @@ coverage.xml
 # VSCode
 .vscode/
 .gemini/
+.history/
+ssl/

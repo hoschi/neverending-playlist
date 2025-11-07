@@ -127,7 +127,14 @@ async def sync_playlist_endpoint(
 
 def main() -> None:  # pragma: no cover
     """Main function to run the FastAPI application."""
-    uvicorn.run(app, host="0.0.0.0", port=6361)
+    settings = get_settings()
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=6361,
+        ssl_certfile=settings.ssl_cert_path,
+        ssl_keyfile=settings.ssl_key_path,
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover

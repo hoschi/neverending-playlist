@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # Encryption
     encryption_key: str
 
+    # SSL
+    ssl_cert_path: str = "ssl/cert.pem"
+    ssl_key_path: str = "ssl/key.pem"
+
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
