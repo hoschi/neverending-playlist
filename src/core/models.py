@@ -14,7 +14,7 @@ class SongRequest(BaseModel):
     id: int = Field(..., description="The unique identifier for the song request.")
     song: Song = Field(..., description="The song being requested.")
     requested_by: str = Field(..., description="The user who requested the song.")
-    is_added: bool = Field(
+    added_to_spotify: bool = Field(
         default=False, description="Whether the song has been added to the playlist."
     )
 

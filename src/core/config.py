@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     # Supabase
     supabase_url: str
     supabase_key: str
+    supabase_table: str
 
     # Spotify
     spotipy_client_id: str

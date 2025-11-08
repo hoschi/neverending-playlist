@@ -9,7 +9,7 @@ def test_song_request_model_creation() -> None:
         id=1,
         song=song,
         requested_by="test_user",
-        is_added=False,
+        added_to_spotify=False,
     )
 
     # Assert
@@ -17,4 +17,4 @@ def test_song_request_model_creation() -> None:
     assert song_request.song.artist == "Test Artist"
     assert song_request.song.title == "Test Title"
     assert song_request.requested_by == "test_user"
-    assert not song_request.is_added
+    assert not song_request.added_to_spotify

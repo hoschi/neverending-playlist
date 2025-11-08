@@ -26,7 +26,7 @@ class ConcreteSupabaseClient(SupabaseClient):
             response = (
                 self.client.table("song_requests")
                 .select("*")
-                .eq("is_added", "false")
+                .eq("added_to_spotify", "false")
                 .limit(max_count)
                 .execute()
             )
@@ -35,7 +35,7 @@ class ConcreteSupabaseClient(SupabaseClient):
                     id=item["id"],
                     song=Song(artist=item["artist"], title=item["title"]),
                     requested_by=item["requested_by"],
-                    is_added=item["is_added"],
+                    added_to_spotify=item["added_to_spotify"],
                 )
                 for item in response.data
             ]
@@ -50,7 +50,7 @@ class ConcreteSupabaseClient(SupabaseClient):
             request_ids = [req.id for req in song_requests]
             (
                 self.client.table("song_requests")
-                .update({"is_added": True})
+                .update({"added_to_spotify": True})
                 .in_("id", request_ids)
                 .execute()
             )
