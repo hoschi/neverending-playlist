@@ -26,16 +26,16 @@ class ConcreteSupabaseClient(SupabaseClient):
             response = (
                 self.client.table("_spotify_to_supabase_test")
                 .select("*")
-                .eq("added_to_spotify", "false")
+                .is_("added_to_spotify", "null")
                 .limit(max_count)
                 .execute()
             )
             song_requests = [
                 SongRequest(
                     id=item["id"],
-                    song=Song(artist=item["artist"], title=item["title"]),
-                    requested_by=item["requested_by"],
-                    added_to_spotify=item["added_to_spotify"],
+                    song=Song(artist=item["artist"], title=item["song"]),
+                    requested_by="hoschi",
+                    added_to_spotify=False,
                 )
                 for item in response.data
             ]
@@ -91,14 +91,22 @@ class ConcreteSpotifyClient(SpotifyClient):
         try:
             settings = get_settings()
             track_uris: list[str] = []
+            problems: list[str] = []
             for song in songs:
                 query = f"artist:{song.song.artist} track:{song.song.title}"
                 results = self.client.search(q=query, type="track", limit=1)
                 if results and results["tracks"]["items"]:
                     track_uris.append(results["tracks"]["items"][0]["uri"])
+                else:
+                    problems.append(
+                        f"Couldn't find song '{song.song.title}' from '{song.song.artist}'!"
+                    )
 
             if track_uris:
                 self.client.playlist_add_items(settings.spotify_playlist_id, track_uris)
+
+            if problems:
+                print(problems)
             return Success(None)
         except Exception as e:
             return Result.from_failure(e)

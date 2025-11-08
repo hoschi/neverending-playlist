@@ -88,6 +88,34 @@ This application uses the OAuth 2.0 Authorization Code Flow to access your Spoti
 
 Upon successful authorization, the application will automatically encrypt and save a `SPOTIFY_REFRESH_TOKEN` to your `.env` file. The service will use this token to stay logged in.
 
+### 5. Supabase
+
+#### Lokal gehostete Supabase-Instanz
+
+**Zugangsdaten finden**:
+- Go to your local Supabase UI
+- In der rechten oberen Ecke auf das Profil Icon clicken, "Command Menu" auswählen 
+- Run "Copy API URL" and paste it into `SUPABASE_URL` in the `.env` file
+- Run "Get API keys", select "Copy service API key" and paste it into `SUPABASE_KEY` in the `.env` file
+
+#### Supabase Cloud (https://supabase.com/)
+
+1. **Projekt erstellen**:
+   - Melden Sie sich bei Supabase an und erstellen Sie ein neues Projekt
+   - Wählen Sie eine Region nahe Ihres Standorts für bessere Performance
+2. **Zugangsdaten finden**:
+   - Nach der Projekterstellung gehen Sie zu Project Settings > API
+   - Kopieren Sie die `URL` und `public anon key` in Ihre `.env` Datei:
+     ```env
+     SUPABASE_URL="https://your-project-id.supabase.co"
+     SUPABASE_KEY="your-public-anon-key"
+     ```
+3. **Tabellenberechtigungen**:
+   - Stellen Sie sicher, dass der Service-Account (public anon key) Lese-/Schreibrechte für Ihre Tabelle hat
+   - Gehen Sie zu Authentication > Policies und erstellen Sie entsprechende Zugriffsregeln
+
+Weitere Details finden Sie in der [Supabase Dokumentation](https://supabase.com/docs).
+
 ## Daily Work
 
 ### Running the Service

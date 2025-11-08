@@ -1,6 +1,6 @@
+import ssl
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from logging import log
 from typing import Annotated
 
 import spotipy  # type: ignore
@@ -12,7 +12,6 @@ from loguru import logger
 from pydantic import SecretStr
 from returns.pipeline import is_successful
 from spotipy.oauth2 import SpotifyOAuth  # type: ignore
-import ssl
 
 from src.core.config import get_settings
 from src.core.models import UserAuthorization
