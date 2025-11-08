@@ -24,7 +24,7 @@ class ConcreteSupabaseClient(SupabaseClient):
     ) -> Result[list[SongRequest], Exception]:
         try:
             response = (
-                self.client.table("song_requests")
+                self.client.table("_spotify_to_supabase_test")
                 .select("*")
                 .eq("added_to_spotify", "false")
                 .limit(max_count)
@@ -49,7 +49,7 @@ class ConcreteSupabaseClient(SupabaseClient):
         try:
             request_ids = [req.id for req in song_requests]
             (
-                self.client.table("song_requests")
+                self.client.table("_spotify_to_supabase_test")
                 .update({"added_to_spotify": True})
                 .in_("id", request_ids)
                 .execute()
