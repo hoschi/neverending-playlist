@@ -29,3 +29,5 @@ coverage.xml
 .gemini/
 .history/
 ssl/
+.cache/
+.cache

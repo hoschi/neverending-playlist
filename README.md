@@ -58,9 +58,9 @@ To link your Spotify account to the service, follow these steps:
 4. **Perform OAuth Authorization**
     - Start the web service:
       ```bash
-      poetry run uvicorn src.shell.api:app --reload
+      poetry run python src/shell/api.py
       ```
-    - Open `http://localhost:6361/login` in your browser.
+    - Open `https://localhost:6361/login` in your browser.
     - You will be redirected to Spotify to authorize the application.
     - After successful login and approval, you will be redirected back to the application (`/callback`).
     - The service will automatically save the encrypted `SPOTIFY_REFRESH_TOKEN` in your `.env` file.
@@ -81,7 +81,7 @@ This application uses the OAuth 2.0 Authorization Code Flow to access your Spoti
     ```
     Add this key to your `.env` file as `ENCRYPTION_KEY`.
 3.  **Authorize the Application**:
-    - Start the web service: `poetry run uvicorn src.shell.api:app --reload`
+    - Start the web service: `poetry run python src/shell/api.py`
     - Open your browser and navigate to `http://localhost:6361/login`.
     - You will be redirected to Spotify to log in and grant permission.
     - After you approve, you will be redirected back to the application's `/callback` endpoint.
@@ -93,7 +93,7 @@ Upon successful authorization, the application will automatically encrypt and sa
 ### Running the Service
 To start the web service, run the following command:
 ```bash
-poetry run uvicorn src.shell.api:app --reload
+poetry run python src/shell/api.py
 ```
 
 ### Running Quality Checks

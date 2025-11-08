@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from logging import log
 from typing import Annotated
 
 import spotipy  # type: ignore
@@ -11,6 +12,7 @@ from loguru import logger
 from pydantic import SecretStr
 from returns.pipeline import is_successful
 from spotipy.oauth2 import SpotifyOAuth  # type: ignore
+import ssl
 
 from src.core.config import get_settings
 from src.core.models import UserAuthorization
@@ -128,6 +130,10 @@ async def sync_playlist_endpoint(
 def main() -> None:  # pragma: no cover
     """Main function to run the FastAPI application."""
     settings = get_settings()
+    # Create SSL context
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    print("STARTING with main config")
+    ssl_context.load_cert_chain(settings.ssl_cert_path, settings.ssl_key_path)
     uvicorn.run(
         app,
         host="0.0.0.0",
