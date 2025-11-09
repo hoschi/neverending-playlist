@@ -1,0 +1,1 @@
+Lies dir die Datei `<root>/ai-assistants/01-main-directives.md` durch, bevor du anfängst.

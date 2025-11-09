@@ -1,6 +1,6 @@
 from returns.result import Success
 
-from src.core.models import SongRequest
+from src.core.models import SongAdditionStatus, SongRequest
 from src.core.protocols import SpotifyClient, SupabaseClient
 
 
@@ -31,8 +31,8 @@ class MockSpotifyClient(SpotifyClient):
         self.added_songs: list[SongRequest] = []
         self.should_fail = should_fail
 
-    async def add_songs_to_playlist(self, songs: list[SongRequest]) -> Success[None]:
+    async def add_songs_to_playlist(self, songs: list[SongRequest]):
         if self.should_fail:
             raise Exception("Spotify API failed")
         self.added_songs.extend(songs)
-        return Success(None)
+        return Success([(song, SongAdditionStatus.SUCCESS) for song in songs])

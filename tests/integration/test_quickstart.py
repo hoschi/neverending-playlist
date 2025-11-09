@@ -35,8 +35,9 @@ async def test_quickstart_workflow() -> None:
     # Assert
     assert response.status_code == 200
     response_data = response.json()
-    assert response_data["status"] == "success"
-    assert response_data["songs_added"] == 2
+    assert response_data["successful"] == ["1", "2"]
+    assert response_data["not_found"] == []
+    assert response_data["errors"] == []
     assert len(supabase_mock.updated_requests) == 2
     assert len(spotify_mock.added_songs) == 2
 
