@@ -301,14 +301,15 @@ async def test_update_song_requests_as_added_database_failure(
     ]
 
     database_error = Exception("Database update failed")
-    mock_supabase_client.table.return_value.update.return_value.in_.return_value.execute.side_effect = database_error
+    mock_supabase_client.table.return_value.update.return_value.eq.return_value.execute.side_effect = database_error
 
     # Act
     result = await concrete_supabase_client.update_song_requests_as_added(song_requests)
 
     # Assert
-    assert isinstance(result, Success)
-    assert result.unwrap() is None
+    assert isinstance(result, Failure)
+    assert isinstance(result.failure(), Exception)
+    assert result.failure() == database_error
 
     # Verify the correct Supabase query chain was used
     mock_supabase_client.table.assert_called_once_with("_spotify_to_supabase_test")
@@ -323,7 +324,7 @@ async def test_update_song_requests_as_added_database_failure(
 async def test_update_song_requests_as_added_multiple_ids(
     concrete_supabase_client: ConcreteSupabaseClient, mock_supabase_client: MagicMock
 ) -> None:
-    """Test update of song requests with multiple IDs using in_ method."""
+    """Test update of song requests with multiple IDs."""
     # Arrange
     song_requests = [
         SongRequest(
@@ -346,7 +347,7 @@ async def test_update_song_requests_as_added_multiple_ids(
         ),
     ]
 
-    mock_supabase_client.table.return_value.update.return_value.in_.return_value.execute.return_value = MagicMock()
+    mock_supabase_client.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
 
     # Act
     result = await concrete_supabase_client.update_song_requests_as_added(song_requests)
@@ -543,9 +544,9 @@ async def test_add_songs_to_playlist_success(
 
     if found_uris:
         assert mock_spotify_client.playlist_add_items.call_count == len(found_uris)
-        mock_spotify_client.playlist_add_items.assert_any_call(
-            "playlist_id", found_uris
-        )
+        # Verify each call contains a single URI in a list
+        for uri in found_uris:
+            mock_spotify_client.playlist_add_items.assert_any_call("playlist_id", [uri])
     else:
         mock_spotify_client.playlist_add_items.assert_not_called()
 
