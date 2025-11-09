@@ -5,13 +5,7 @@ info:
 paths:
   /sync-playlist:
     post:
-      summary: Sync a playlist with a list of songs
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SyncPlaylistRequest'
+      summary: Sync a playlist with songs from the database
       responses:
         '200':
           description: Songs processed successfully (may include songs not found)
@@ -27,35 +21,21 @@ paths:
                 $ref: '#/components/schemas/SyncPlaylistResponse'
 components:
   schemas:
-    SongRequest:
-      type: object
-      properties:
-        song_title:
-          type: string
-        artist_name:
-          type: string
-    SyncPlaylistRequest:
-      type: object
-      properties:
-        playlist_id:
-          type: string
-          format: uuid
-        songs:
-          type: array
-          items:
-            $ref: '#/components/schemas/SongRequest'
     SyncPlaylistResponse:
       type: object
       properties:
         successful:
           type: array
           items:
-            $ref: '#/components/schemas/SongRequest'
+            type: string
+            example: "Queen - Bohemian Rhapsody"
         not_found:
           type: array
           items:
-            $ref: '#/components/schemas/SongRequest'
+            type: string
+            example: "No One - Non Existent Song"
         errors:
           type: array
           items:
-            $ref: '#/components/schemas/SongRequest'
+            type: string
+            example: "Some Artist - Another Song"

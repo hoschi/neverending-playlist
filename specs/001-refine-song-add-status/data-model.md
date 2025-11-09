@@ -17,7 +17,7 @@ Represents a user's request to add a song to a playlist.
 
 **State Transitions**:
 
-The `added` field will transition from a default state (e.g., `PENDING`) to one of the final states: `SUCCESS`, `NOT_FOUND`, or `ERROR`.
+The `added` field will be updated to one of the final states: `SUCCESS`, `NOT_FOUND`, or `ERROR` during processing.
 
 ## Enumerations
 
@@ -30,4 +30,3 @@ An enumeration representing the possible states of a song addition attempt.
 - `SUCCESS`: The song was successfully found and added to the playlist.
 - `NOT_FOUND`: The song could not be found on Spotify.
 - `ERROR`: An unexpected error occurred while trying to add the song.
-- `PENDING`: The song has not yet been processed.
