@@ -87,7 +87,13 @@ def callback(
 
         # Create a temporary client to get the user's ID
         temp_client = spotipy.Spotify(auth=token_info["access_token"])
-        user_id = temp_client.current_user()["id"]
+        current_user = temp_client.current_user()
+        if current_user is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to retrieve user information from Spotify.",
+            )
+        user_id = current_user["id"]
 
         auth_data = UserAuthorization(
             spotify_user_id=user_id,

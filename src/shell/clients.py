@@ -85,6 +85,14 @@ class ConcreteSpotifyClient(SpotifyClient):
 
         self.client = spotipy.Spotify(auth_manager=auth_manager)
 
+    async def get_current_user(self) -> Result[dict[str, str] | None, Exception]:
+        """Get the current user's profile information from Spotify."""
+        try:
+            user_info = self.client.current_user()
+            return Success(user_info)
+        except Exception as e:
+            return Result.from_failure(e)
+
     async def add_songs_to_playlist(
         self, songs: list[SongRequest]
     ) -> Result[None, Exception]:
