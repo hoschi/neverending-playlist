@@ -1,9 +1,10 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from returns.result import Failure, Success
 
 from src.core.models import Song, SongRequest
-from src.shell.clients import ConcreteSupabaseClient, ConcreteSpotifyClient
+from src.shell.clients import ConcreteSpotifyClient, ConcreteSupabaseClient
 
 
 @pytest.fixture
@@ -394,7 +395,9 @@ def concrete_spotify_client(mock_spotify_client: MagicMock) -> ConcreteSpotifyCl
                     # Mock settings
                     mock_settings_instance = MagicMock()
                     mock_settings_instance.spotify_refresh_token = "test_token"
-                    mock_settings_instance.spotify_playlist_id = "7AVVVQ6TJMTA17a2e6ncFr"  # Use the actual ID from the test environment
+                    mock_settings_instance.spotify_playlist_id = (
+                        "playlist_id"  # Use the actual ID from the test environment
+                    )
                     mock_settings_instance.encryption_key = "test_key"
                     mock_settings_instance.spotipy_client_id = "test_client_id"
                     mock_settings_instance.spotipy_client_secret = "test_client_secret"
@@ -538,7 +541,7 @@ async def test_add_songs_to_playlist_success(
 
     if found_uris:
         mock_spotify_client.playlist_add_items.assert_called_once_with(
-            "7AVVVQ6TJMTA17a2e6ncFr", found_uris
+            "playlist_id", found_uris
         )
     else:
         mock_spotify_client.playlist_add_items.assert_not_called()
@@ -583,7 +586,7 @@ async def test_add_songs_to_playlist_api_failure(
         q="artist:Test Artist track:Test Song", type="track", limit=1
     )
     mock_spotify_client.playlist_add_items.assert_called_once_with(
-        "7AVVVQ6TJMTA17a2e6ncFr", ["spotify:track:001"]
+        "playlist_id", ["spotify:track:001"]
     )
 
 
