@@ -116,6 +116,47 @@ Upon successful authorization, the application will automatically encrypt and sa
 
 Weitere Details finden Sie in der [Supabase Dokumentation](https://supabase.com/docs).
 
+### 6. Setup SSL Certificates
+
+For development with HTTPS, you need to create SSL certificates and keys. This guide shows you how to create self-signed certificates for local development.
+
+#### 1. Create SSL folder
+
+First, create a folder for your SSL certificates:
+
+```bash
+mkdir -p ssl
+```
+
+#### 2. Generate private key
+
+Generate a private key with 2048 bits:
+
+```bash
+openssl genrsa -out ssl/key.pem 2048
+```
+
+#### 3. Create self-signed certificate
+
+Create a self-signed certificate that is valid for one year:
+
+```bash
+openssl req -new -x509 -key ssl/key.pem -out ssl/cert.pem -days 365 -subj "/CN=localhost"
+```
+
+#### 4. Configure environment variables
+
+Add the following lines to your `.env` file to specify the paths to your SSL files:
+
+```
+SSL_CERT_PATH=ssl/cert.pem
+SSL_KEY_PATH=ssl/key.pem
+```
+
+#### Note
+
+These self-signed certificates are only suitable for local development. For production environments, you should use certificates signed by a trusted Certificate Authority (CA).
+
 ## Daily Work
 
 ### Running the Service
