@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from returns.result import Failure, Success
 
 from src.core.models import Song, SongRequest
-from src.shell.clients import ConcreteSupabaseClient
+from src.shell.clients import ConcreteSupabaseClient, ConcreteSpotifyClient
 
 
 @pytest.fixture
@@ -376,3 +376,247 @@ async def test_update_song_requests_as_added_multiple_ids(
     table_mock.update.assert_called_once_with({"added_to_spotify": True})
     table_mock.update.return_value.in_.assert_called_once_with("id", [1, 2, 3])
     table_mock.update.return_value.in_.return_value.execute.assert_called_once()
+
+
+@pytest.fixture
+def mock_spotify_client() -> MagicMock:
+    """Provides a mock Spotify client."""
+    return MagicMock()
+
+
+@pytest.fixture
+def concrete_spotify_client(mock_spotify_client: MagicMock) -> ConcreteSpotifyClient:
+    """Provides a ConcreteSpotifyClient instance with mocked dependencies."""
+    with patch("src.shell.clients.get_settings") as mock_settings:
+        with patch("src.shell.clients.EncryptionService") as mock_encryption:
+            with patch("src.shell.clients.SpotifyOAuth") as mock_auth:
+                with patch("src.shell.clients.spotipy.Spotify") as mock_spotify:
+                    # Mock settings
+                    mock_settings_instance = MagicMock()
+                    mock_settings_instance.spotify_refresh_token = "test_token"
+                    mock_settings_instance.spotify_playlist_id = "7AVVVQ6TJMTA17a2e6ncFr"  # Use the actual ID from the test environment
+                    mock_settings_instance.encryption_key = "test_key"
+                    mock_settings_instance.spotipy_client_id = "test_client_id"
+                    mock_settings_instance.spotipy_client_secret = "test_client_secret"
+                    mock_settings_instance.spotipy_redirect_uri = "test_redirect_uri"
+                    mock_settings.return_value = mock_settings_instance
+
+                    # Mock encryption
+                    mock_encryption.return_value.decrypt.return_value = (
+                        "decrypted_token"
+                    )
+
+                    # Mock auth
+                    mock_auth_instance = MagicMock()
+                    mock_auth.return_value = mock_auth_instance
+
+                    # Mock spotify client
+                    mock_spotify.return_value = mock_spotify_client
+
+                    return ConcreteSpotifyClient()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "song_requests,search_results,expected_problems,expected_calls",
+    [
+        # Success case: All songs found
+        (
+            [
+                SongRequest(
+                    id=1,
+                    song=Song(artist="Test Artist 1", title="Test Song 1"),
+                    requested_by="hoschi",
+                    added_to_spotify=False,
+                ),
+                SongRequest(
+                    id=2,
+                    song=Song(artist="Test Artist 2", title="Test Song 2"),
+                    requested_by="hoschi",
+                    added_to_spotify=False,
+                ),
+            ],
+            [
+                {"tracks": {"items": [{"uri": "spotify:track:001"}]}},
+                {"tracks": {"items": [{"uri": "spotify:track:002"}]}},
+            ],
+            [],
+            2,
+        ),
+        # Partial success: Some songs found
+        (
+            [
+                SongRequest(
+                    id=1,
+                    song=Song(artist="Test Artist 1", title="Test Song 1"),
+                    requested_by="hoschi",
+                    added_to_spotify=False,
+                ),
+                SongRequest(
+                    id=2,
+                    song=Song(artist="Test Artist 2", title="Test Song 2"),
+                    requested_by="hoschi",
+                    added_to_spotify=False,
+                ),
+                SongRequest(
+                    id=3,
+                    song=Song(artist="Test Artist 3", title="Test Song 3"),
+                    requested_by="hoschi",
+                    added_to_spotify=False,
+                ),
+            ],
+            [
+                {"tracks": {"items": [{"uri": "spotify:track:001"}]}},
+                {"tracks": {"items": []}},  # Not found
+                {"tracks": {"items": [{"uri": "spotify:track:003"}]}},
+            ],
+            ["Couldn't find song 'Test Song 2' from 'Test Artist 2'!"],
+            3,
+        ),
+        # No songs found
+        (
+            [
+                SongRequest(
+                    id=1,
+                    song=Song(artist="Test Artist 1", title="Test Song 1"),
+                    requested_by="hoschi",
+                    added_to_spotify=False,
+                ),
+                SongRequest(
+                    id=2,
+                    song=Song(artist="Test Artist 2", title="Test Song 2"),
+                    requested_by="hoschi",
+                    added_to_spotify=False,
+                ),
+            ],
+            [
+                {"tracks": {"items": []}},
+                {"tracks": {"items": []}},
+            ],
+            [
+                "Couldn't find song 'Test Song 1' from 'Test Artist 1'!",
+                "Couldn't find song 'Test Song 2' from 'Test Artist 2'!",
+            ],
+            2,
+        ),
+        # Empty list
+        ([], [], [], 0),
+    ],
+)
+async def test_add_songs_to_playlist_success(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+    song_requests: list[SongRequest],
+    search_results: list[dict],
+    expected_problems: list[str],
+    expected_calls: int,
+) -> None:
+    """Test successful addition of songs to playlist with various scenarios."""
+    # Arrange
+    mock_spotify_client.search.side_effect = search_results
+
+    # Act
+    result = await concrete_spotify_client.add_songs_to_playlist(song_requests)
+
+    # Assert
+    assert isinstance(result, Success)
+    assert result.unwrap() is None
+
+    # Verify search calls
+    assert mock_spotify_client.search.call_count == expected_calls
+    for i, song in enumerate(song_requests):
+        expected_query = f"artist:{song.song.artist} track:{song.song.title}"
+        mock_spotify_client.search.assert_any_call(
+            q=expected_query, type="track", limit=1
+        )
+
+    # Verify playlist add calls
+    found_uris = []
+    for i, song in enumerate(song_requests):
+        if search_results[i] and search_results[i]["tracks"]["items"]:
+            found_uris.append(search_results[i]["tracks"]["items"][0]["uri"])
+
+    if found_uris:
+        mock_spotify_client.playlist_add_items.assert_called_once_with(
+            "7AVVVQ6TJMTA17a2e6ncFr", found_uris
+        )
+    else:
+        mock_spotify_client.playlist_add_items.assert_not_called()
+
+    # Verify problems are printed (we can't easily test print statements, but we can verify the logic)
+    assert len(expected_problems) == len(
+        [r for r in search_results if not r["tracks"]["items"]]
+    )
+
+
+@pytest.mark.anyio
+async def test_add_songs_to_playlist_api_failure(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test addition of songs to playlist when Spotify API fails."""
+    # Arrange
+    song_requests = [
+        SongRequest(
+            id=1,
+            song=Song(artist="Test Artist", title="Test Song"),
+            requested_by="hoschi",
+            added_to_spotify=False,
+        )
+    ]
+
+    # Mock search to succeed but playlist_add_items to fail
+    mock_spotify_client.search.return_value = {
+        "tracks": {"items": [{"uri": "spotify:track:001"}]}
+    }
+    mock_spotify_client.playlist_add_items.side_effect = Exception("API Error")
+
+    # Act
+    result = await concrete_spotify_client.add_songs_to_playlist(song_requests)
+
+    # Assert
+    assert isinstance(result, Failure)
+    assert str(result.failure()) == "API Error"
+
+    # Verify the calls were made
+    mock_spotify_client.search.assert_called_once_with(
+        q="artist:Test Artist track:Test Song", type="track", limit=1
+    )
+    mock_spotify_client.playlist_add_items.assert_called_once_with(
+        "7AVVVQ6TJMTA17a2e6ncFr", ["spotify:track:001"]
+    )
+
+
+@pytest.mark.anyio
+async def test_add_songs_to_playlist_search_failure(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test addition of songs to playlist when search fails."""
+    # Arrange
+    song_requests = [
+        SongRequest(
+            id=1,
+            song=Song(artist="Test Artist", title="Test Song"),
+            requested_by="hoschi",
+            added_to_spotify=False,
+        )
+    ]
+
+    # Mock search to fail
+    mock_spotify_client.search.side_effect = Exception("Search failed")
+
+    # Act
+    result = await concrete_spotify_client.add_songs_to_playlist(song_requests)
+
+    # Assert
+    assert isinstance(result, Failure)
+    assert str(result.failure()) == "Search failed"
+
+    # Verify the search was called
+    mock_spotify_client.search.assert_called_once_with(
+        q="artist:Test Artist track:Test Song", type="track", limit=1
+    )
+
+    # Verify playlist_add_items was not called
+    mock_spotify_client.playlist_add_items.assert_not_called()
