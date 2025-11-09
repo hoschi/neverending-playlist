@@ -149,6 +149,37 @@ Upon successful authorization, the application will automatically encrypt and sa
 
 Weitere Details finden Sie in der [Supabase Dokumentation](https://supabase.com/docs).
 
+#### Database Schema
+
+Here is the SQL statement to create the `_spotify_to_supabase_test` table:
+
+```sql
+CREATE TABLE public._spotify_to_supabase_test (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    artist TEXT NOT NULL,
+    song TEXT NOT NULL,
+    status TEXT,
+    requested_by TEXT
+);
+```
+
+To copy data from an existing table with `artist` and `song` columns into the newly created table, you can use the following SQL command. Replace `your_existing_table` with the name of your source table.
+
+```sql
+INSERT INTO public._spotify_to_supabase_test (artist, song)
+SELECT artist, song
+FROM your_existing_table;
+```
+
+If you want to import only a limited number of records, for example 30, you can add `LIMIT 30` to the query:
+
+```sql
+INSERT INTO public._spotify_to_supabase_test (artist, song)
+SELECT artist, song
+FROM your_existing_table
+LIMIT 30;
+```
+
 ### 6. Setup SSL Certificates
 
 For development with HTTPS, you need to create SSL certificates and keys. This guide shows you how to create self-signed certificates for local development.
