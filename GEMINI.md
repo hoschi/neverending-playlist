@@ -9,3 +9,10 @@ This project uses the MCP server "Context7" for code documentation and examples.
 - **Logging:** See section "Structured Logging with Loguru"
 
 For further details, see the README and the specification.
+
+## Active Technologies
+- Python 3.12 + FastAPI, Pydantic, returns, Loguru, Supabase (001-refine-song-add-status)
+- Supabase (PostgreSQL) (001-refine-song-add-status)
+
+## Recent Changes
+- 001-refine-song-add-status: Added Python 3.12 + FastAPI, Pydantic, returns, Loguru, Supabase
