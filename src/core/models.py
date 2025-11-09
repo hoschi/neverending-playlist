@@ -1,4 +1,14 @@
+from enum import Enum
+
 from pydantic import BaseModel, Field
+
+
+class SongAdditionStatus(str, Enum):
+    """Enum representing the status of song addition attempts."""
+
+    SUCCESS = "SUCCESS"
+    NOT_FOUND = "NOT_FOUND"
+    ERROR = "ERROR"
 
 
 class Song(BaseModel):
@@ -14,8 +24,22 @@ class SongRequest(BaseModel):
     id: int = Field(..., description="The unique identifier for the song request.")
     song: Song = Field(..., description="The song being requested.")
     requested_by: str = Field(..., description="The user who requested the song.")
-    added_to_spotify: bool = Field(
-        default=False, description="Whether the song has been added to the playlist."
+    status: SongAdditionStatus | None = Field(
+        default=None, description="The status of the song addition attempt to Spotify."
+    )
+
+
+class SyncPlaylistResult(BaseModel):
+    """Represents the result of a playlist synchronization operation."""
+
+    successful: list[str] = Field(
+        default_factory=list, description="List of successfully added song IDs."
+    )
+    not_found: list[str] = Field(
+        default_factory=list, description="List of song IDs that were not found."
+    )
+    errors: list[str] = Field(
+        default_factory=list, description="List of error messages for failed additions."
     )
 
 

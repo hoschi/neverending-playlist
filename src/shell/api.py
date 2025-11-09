@@ -6,7 +6,7 @@ from typing import Annotated
 import spotipy  # type: ignore
 import uvicorn
 from dotenv import set_key
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from loguru import logger
 from pydantic import SecretStr
@@ -122,14 +122,30 @@ async def sync_playlist_endpoint(
     supabase_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
     max_count: int = Query(10, gt=0, le=50),
-) -> dict[str, str | int]:
+) -> dict[str, list[str]]:
     """API endpoint to synchronize the playlist."""
     result = await sync_playlist(supabase_client, spotify_client, max_count)
 
     if not is_successful(result):
         raise HTTPException(status_code=500, detail=str(result.failure()))
 
-    return {"status": "success", "songs_added": result.unwrap()}
+    sync_result = result.unwrap()
+
+    if sync_result.not_found or sync_result.errors:
+        raise HTTPException(
+            status_code=status.HTTP_207_MULTI_STATUS,
+            detail={
+                "successful": sync_result.successful,
+                "not_found": sync_result.not_found,
+                "errors": sync_result.errors,
+            },
+        )
+
+    return {
+        "successful": sync_result.successful,
+        "not_found": sync_result.not_found,
+        "errors": sync_result.errors,
+    }
 
 
 def main() -> None:  # pragma: no cover

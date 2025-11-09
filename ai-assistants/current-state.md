@@ -20,7 +20,7 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 
 - **`__init__.py`** - Leere Core-Package Initialisierung.
 - **`config.py`** - Pydantic Settings für alle Konfigurationsvariablen, inklusive Supabase, Spotify OAuth und dem Encryption Key. Lädt aus `.env`.
-- **`models.py`** - Pydantic Datenmodelle: `Song`, `SongRequest` und `UserAuthorization` für die Spotify-OAuth-Daten.
+- **`models.py`** - Pydantic Datenmodelle: `Song`, `SongRequest`, `UserAuthorization` für die Spotify-OAuth-Daten, `SongAdditionStatus`-Enum und `SyncPlaylistResult`.
 - **`protocols.py`** - Definiert die `SupabaseClient` und `SpotifyClient` Protokolle mit `@runtime_checkable`, um die Entkopplung zwischen Shell und Core zu gewährleisten.
 
 #### src/core/services/
@@ -34,10 +34,16 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 #### src/shell/
 
 - **`__init__.py`** - Leere Shell-Package Initialisierung.
-- **`api.py`** - FastAPI Web-Interface. Stellt die Endpunkte `/login` und `/callback` für den OAuth-Flow sowie `/sync-playlist` für die Playlist-Synchronisation bereit.
+- **`api.py`** - FastAPI Web-Interface. Stellt die Endpunkte `/login` und `/callback` für den OAuth-Flow sowie **`/sync-playlist`** (strukturierte Fehler und Erfolge zurückgebend) für die Playlist-Synchronisation bereit.
 - **`clients.py`** - Enthält die konkreten Implementierungen `ConcreteSupabaseClient` und `ConcreteSpotifyClient`, die die in `core/protocols.py` definierten Protokolle erfüllen.
 - **`cli.py`** - Ein einfacher Typer-CLI-Einstiegspunkt, der die `main`-Funktion für die API startet.
 - **`logging_config.py`** - Konfiguriert `Loguru` für strukturiertes Logging basierend auf den Einstellungen in `config.py`.
+
+## Testabdeckung
+
+- **Unit-Tests:** Testen die neue Logik in `core/services/` und `core/models.py`
+- **Integrationstests:** Testen den vollständigen Sync-Flow und API-Endpunkte
+- **Contract-Tests:** Testen die API-Spezifikation mit `/sync-playlist` Endpunkt
 
 ## Development Setup
 

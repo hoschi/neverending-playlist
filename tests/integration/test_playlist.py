@@ -5,6 +5,7 @@ from httpx import ASGITransport, AsyncClient, Response
 from returns.result import Failure, Success
 from starlette import status
 
+from src.core.models import Song, SongAdditionStatus, SongRequest
 from src.core.protocols import SpotifyClient, SupabaseClient
 from src.shell.api import app, get_spotify_client, get_supabase_client
 
@@ -29,10 +30,29 @@ async def test_sync_playlist_success(
     """Test the success path of the /sync-playlist endpoint."""
     # Arrange
     mock_supabase_client.fetch_pending_song_requests.return_value = Success(
-        [{"id": 1, "artist": "A", "title": "B"}]
+        [
+            SongRequest(
+                id=1,
+                song=Song(artist="A", title="B"),
+                requested_by="hoschi",
+                status=None,
+            )
+        ]
     )
     mock_supabase_client.update_song_requests_as_added.return_value = Success(None)
-    mock_spotify_client.add_songs_to_playlist.return_value = Success(None)
+    mock_spotify_client.add_songs_to_playlist.return_value = Success(
+        [
+            (
+                SongRequest(
+                    id=1,
+                    song=Song(artist="A", title="B"),
+                    requested_by="hoschi",
+                    status=None,
+                ),
+                SongAdditionStatus.SUCCESS,
+            )
+        ]
+    )
 
     app.dependency_overrides[get_supabase_client] = lambda: mock_supabase_client
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client

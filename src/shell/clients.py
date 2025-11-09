@@ -1,11 +1,12 @@
 import spotipy  # type: ignore
+from loguru import logger
 from pydantic import SecretStr
 from returns.result import Result, Success
 from spotipy.oauth2 import SpotifyOAuth  # type: ignore
 from supabase import Client, create_client
 
 from src.core.config import get_settings
-from src.core.models import Song, SongRequest
+from src.core.models import Song, SongAdditionStatus, SongRequest
 from src.core.protocols import SpotifyClient, SupabaseClient
 from src.core.services.encryption_service import EncryptionService
 
@@ -26,7 +27,7 @@ class ConcreteSupabaseClient(SupabaseClient):
             response = (
                 self.client.table("_spotify_to_supabase_test")
                 .select("*")
-                .is_("added_to_spotify", "null")
+                .is_("status", "null")
                 .limit(max_count)
                 .execute()
             )
@@ -35,7 +36,7 @@ class ConcreteSupabaseClient(SupabaseClient):
                     id=item["id"],
                     song=Song(artist=item["artist"], title=item["song"]),
                     requested_by="hoschi",
-                    added_to_spotify=False,
+                    status=None,
                 )
                 for item in response.data
             ]
@@ -47,13 +48,21 @@ class ConcreteSupabaseClient(SupabaseClient):
         self, song_requests: list[SongRequest]
     ) -> Result[None, Exception]:
         try:
-            request_ids = [req.id for req in song_requests]
-            (
-                self.client.table("_spotify_to_supabase_test")
-                .update({"added_to_spotify": True})
-                .in_("id", request_ids)
-                .execute()
-            )
+            # Update each song request individually with its specific status
+            for song_request in song_requests:
+                # Update the database with the status
+                (
+                    self.client.table("_spotify_to_supabase_test")
+                    .update(
+                        {
+                            "status": song_request.status.value
+                            if song_request.status
+                            else None
+                        }
+                    )
+                    .eq("id", song_request.id)
+                    .execute()
+                )
             return Success(None)
         except Exception as e:
             return Result.from_failure(e)
@@ -95,26 +104,48 @@ class ConcreteSpotifyClient(SpotifyClient):
 
     async def add_songs_to_playlist(
         self, songs: list[SongRequest]
-    ) -> Result[None, Exception]:
+    ) -> Result[list[tuple[SongRequest, SongAdditionStatus]], Exception]:
+        """Add songs to playlist and return individual status for each song.
+
+        Args:
+            songs: List of song requests to add to playlist
+
+        Returns:
+            Result containing list of tuples (song_request, status) for each song
+        """
         try:
             settings = get_settings()
-            track_uris: list[str] = []
-            problems: list[str] = []
+            results: list[tuple[SongRequest, SongAdditionStatus]] = []
+
+            # Process each song individually
             for song in songs:
                 query = f"artist:{song.song.artist} track:{song.song.title}"
-                results = self.client.search(q=query, type="track", limit=1)
-                if results and results["tracks"]["items"]:
-                    track_uris.append(results["tracks"]["items"][0]["uri"])
-                else:
-                    problems.append(
-                        f"Couldn't find song '{song.song.title}' from '{song.song.artist}'!"
+                try:
+                    search_results = self.client.search(q=query, type="track", limit=1)
+
+                    if search_results and search_results["tracks"]["items"]:
+                        # Song found, add to playlist and mark as success
+                        track_uri = search_results["tracks"]["items"][0]["uri"]
+                        self.client.playlist_add_items(
+                            settings.spotify_playlist_id, [track_uri]
+                        )
+                        # TODO check return value if it is really a success!
+                        # Update the song request with the status
+                        song.status = SongAdditionStatus.SUCCESS
+                        results.append((song, SongAdditionStatus.SUCCESS))
+                    else:
+                        # Song not found
+                        song.status = SongAdditionStatus.NOT_FOUND
+                        results.append((song, SongAdditionStatus.NOT_FOUND))
+
+                except Exception as e:
+                    # Error processing individual song
+                    song.status = SongAdditionStatus.ERROR
+                    logger.error(
+                        f"Error during search for song with query '{query}': {e}"
                     )
+                    results.append((song, SongAdditionStatus.ERROR))
 
-            if track_uris:
-                self.client.playlist_add_items(settings.spotify_playlist_id, track_uris)
-
-            if problems:
-                print(problems)
-            return Success(None)
+            return Success(results)
         except Exception as e:
             return Result.from_failure(e)

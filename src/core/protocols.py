@@ -2,7 +2,7 @@ from typing import Protocol, runtime_checkable
 
 from returns.result import Result
 
-from src.core.models import SongRequest
+from src.core.models import SongAdditionStatus, SongRequest
 
 
 @runtime_checkable
@@ -26,4 +26,4 @@ class SpotifyClient(Protocol):
 
     async def add_songs_to_playlist(
         self, songs: list[SongRequest]
-    ) -> Result[None, Exception]: ...
+    ) -> Result[list[tuple[SongRequest, SongAdditionStatus]], Exception]: ...

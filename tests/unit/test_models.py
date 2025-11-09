@@ -1,4 +1,4 @@
-from src.core.models import Song, SongRequest
+from src.core.models import Song, SongAdditionStatus, SongRequest
 
 
 def test_song_request_model_creation() -> None:
@@ -9,7 +9,7 @@ def test_song_request_model_creation() -> None:
         id=1,
         song=song,
         requested_by="test_user",
-        added_to_spotify=False,
+        status=None,
     )
 
     # Assert
@@ -17,4 +17,23 @@ def test_song_request_model_creation() -> None:
     assert song_request.song.artist == "Test Artist"
     assert song_request.song.title == "Test Title"
     assert song_request.requested_by == "test_user"
-    assert not song_request.added_to_spotify
+    assert song_request.status is None
+
+
+def test_song_request_model_with_status() -> None:
+    """Test that a SongRequest model can be created with a status."""
+    # Arrange
+    song = Song(artist="Test Artist", title="Test Title")
+    song_request = SongRequest(
+        id=1,
+        song=song,
+        requested_by="test_user",
+        status=SongAdditionStatus.SUCCESS,
+    )
+
+    # Assert
+    assert song_request.id == 1
+    assert song_request.song.artist == "Test Artist"
+    assert song_request.song.title == "Test Title"
+    assert song_request.requested_by == "test_user"
+    assert song_request.status == SongAdditionStatus.SUCCESS

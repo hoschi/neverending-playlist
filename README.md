@@ -5,8 +5,41 @@ This project provides a web service to synchronize song requests from a Supabase
 ## Features
 
 - **Playlist Synchronization**: A FastAPI endpoint (`POST /sync-playlist`) fetches pending song requests from a Supabase table, finds the corresponding tracks on Spotify, and adds them to a specified playlist.
+- **Detailed Response Structure**: The `/sync-playlist` endpoint returns a comprehensive response with details about successful additions, not found tracks, and any errors encountered.
 - **Configurable**: All external service credentials and settings are managed via a `.env` file.
 - **Robust & Testable**: Built with a "Functional Core, Imperative Shell" architecture, ensuring the business logic is isolated and easily testable. It uses the `returns` library for explicit, railway-oriented error handling.
+
+## API Endpoints
+
+### POST /sync-playlist
+
+Synchronizes the playlist by fetching pending song requests from Supabase and adding them to Spotify.
+
+**Query Parameters:**
+- `max_count` (optional, default: 10, max: 50): Maximum number of pending song requests to process.
+
+**Response:**
+```json
+{
+  "successful": ["123", "456"],
+  "not_found": ["789"],
+  "errors": []
+}
+```
+
+**Response Fields:**
+- `successful`: List of song IDs that were successfully added to the playlist.
+- `not_found`: List of song IDs that could not be found on Spotify.
+- `errors`: List of error messages for songs that failed to be added due to errors.
+
+**Example Response:**
+```json
+{
+  "successful": ["1", "2", "3"],
+  "not_found": ["4"],
+  "errors": ["Failed to add song ID 5: API rate limit exceeded"]
+}
+```
 
 ## Project Setup
 
