@@ -2,12 +2,13 @@ from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import HTTPException, Request
+from fastapi.testclient import TestClient
 from returns.result import Success
 from spotipy.oauth2 import SpotifyOAuth  # type: ignore
 
 from src.core.models import SyncFailure, SyncResult
 from src.core.services.encryption_service import EncryptionService
-from src.shell.api import callback, sync_playlist_endpoint
+from src.shell.api import callback
 
 
 @pytest.fixture
@@ -64,11 +65,8 @@ def test_callback_without_current_user(
 
 
 @pytest.mark.asyncio
-async def test_sync_playlist_returns_207_on_partial_failure() -> None:
-    """Test sync_playlist_endpoint raises HTTPException 207 on partial failure."""
-    mock_supabase = Mock()
-    mock_spotify = Mock()
-
+async def test_sync_playlist_returns_207_on_partial_failure(client: TestClient) -> None:
+    """Test sync_playlist_endpoint returns JSONResponse 207 on partial failure."""
     sync_result = SyncResult(
         success_count=2,
         failure_count=1,
@@ -79,13 +77,12 @@ async def test_sync_playlist_returns_207_on_partial_failure() -> None:
     )
 
     with patch("src.shell.api.sync_playlist", return_value=Success(sync_result)):
-        with pytest.raises(HTTPException) as exc_info:
-            await sync_playlist_endpoint(
-                supabase_client=mock_supabase,
-                spotify_client=mock_spotify,
-            )
+        response = client.post("/sync-playlist")
 
-        assert exc_info.value.status_code == 207
-        assert "Partial failure" in exc_info.value.detail
-        assert "success_count" in exc_info.value.detail
-        assert "failure_count" in exc_info.value.detail
+        assert response.status_code == 207
+        content = response.json()
+        assert content == {
+            "successful": ["1", "2"],
+            "not_found": [],
+            "errors": ["123: Timeout"],
+        }

@@ -6,8 +6,8 @@ from typing import Annotated
 import spotipy  # type: ignore
 import uvicorn
 from dotenv import set_key
-from fastapi import Depends, FastAPI, HTTPException, Query, status
-from fastapi.responses import RedirectResponse
+from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
+from fastapi.responses import JSONResponse, RedirectResponse
 from loguru import logger
 from pydantic import SecretStr
 from returns.pipeline import is_successful
@@ -122,7 +122,7 @@ async def sync_playlist_endpoint(
     supabase_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
     max_count: int = Query(10, gt=0, le=50),
-) -> dict[str, list[str]]:
+) -> Response:
     """API endpoint to synchronize the playlist."""
     result = await sync_playlist(supabase_client, spotify_client, max_count)
 
@@ -132,16 +132,26 @@ async def sync_playlist_endpoint(
     sync_result = result.unwrap()
 
     if sync_result.failure_count > 0:
-        raise HTTPException(
+        return JSONResponse(
             status_code=status.HTTP_207_MULTI_STATUS,
-            detail=f"Partial failure: success_count={sync_result.success_count}, failure_count={sync_result.failure_count}. Failures: {sync_result.failures}",
+            content={
+                "successful": sync_result.successful,
+                "not_found": sync_result.not_found,
+                "errors": [
+                    f"{failure.song_id}: {failure.reason}"
+                    for failure in sync_result.failures
+                ],
+            },
         )
 
-    return {
-        "successful": sync_result.successful,
-        "not_found": sync_result.not_found,
-        "errors": sync_result.errors,
-    }
+    return JSONResponse(
+        status_code=200,
+        content={
+            "successful": sync_result.successful,
+            "not_found": sync_result.not_found,
+            "errors": sync_result.errors,
+        },
+    )
 
 
 def main() -> None:  # pragma: no cover
