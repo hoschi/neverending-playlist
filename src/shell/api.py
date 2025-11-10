@@ -131,14 +131,10 @@ async def sync_playlist_endpoint(
 
     sync_result = result.unwrap()
 
-    if sync_result.not_found or sync_result.errors:
+    if sync_result.failure_count > 0:
         raise HTTPException(
             status_code=status.HTTP_207_MULTI_STATUS,
-            detail={
-                "successful": sync_result.successful,
-                "not_found": sync_result.not_found,
-                "errors": sync_result.errors,
-            },
+            detail=f"Partial failure: success_count={sync_result.success_count}, failure_count={sync_result.failure_count}. Failures: {sync_result.failures}",
         )
 
     return {

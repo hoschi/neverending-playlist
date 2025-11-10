@@ -2,7 +2,12 @@ from loguru import logger
 from returns.pipeline import is_successful
 from returns.result import Result, Success
 
-from src.core.models import SongAdditionStatus, SongRequest, SyncPlaylistResult
+from src.core.models import (
+    SongAdditionStatus,
+    SongRequest,
+    SyncFailure,
+    SyncResult,
+)
 from src.core.protocols import SpotifyClient, SupabaseClient
 
 
@@ -50,7 +55,7 @@ async def add_songs_to_spotify(
 
 async def sync_playlist(
     supabase_client: SupabaseClient, spotify_client: SpotifyClient, max_count: int
-) -> Result[SyncPlaylistResult, Exception]:
+) -> Result[SyncResult, Exception]:
     """
     Orchestrates the synchronization of the playlist.
     Returns detailed results of the sync operation.
@@ -68,7 +73,7 @@ async def sync_playlist(
     requests = requests_result.unwrap()
     if not requests:
         logger.info("No pending requests found.")
-        return Success(SyncPlaylistResult(successful=[], not_found=[], errors=[]))
+        return Success(SyncResult(success_count=0, failure_count=0, failures=[]))
 
     add_result = await add_songs_to_spotify(spotify_client, requests)
     if not is_successful(add_result):
@@ -93,27 +98,39 @@ async def sync_playlist(
         return Result.from_failure(update_result.failure())
 
     # Categorize songs by status
-    successful_ids = [
-        str(song_request.id)
+    successful = [
+        song_request
         for song_request, status in song_statuses
         if status.value == "SUCCESS"
     ]
-    not_found_ids = [
-        str(song_request.id)
+    not_found = [
+        song_request
         for song_request, status in song_statuses
         if status.value == "NOT_FOUND"
     ]
-    error_ids = [
-        str(song_request.id)
+    errors = [
+        song_request
         for song_request, status in song_statuses
         if status.value == "ERROR"
     ]
 
-    logger.info(
-        "Playlist sync successful. Added {count} songs.", count=len(successful_ids)
-    )
+    success_count = len(successful)
+    successful_ids = [str(req.id) for req in successful]
+    not_found_ids = [str(req.id) for req in not_found]
+    error_ids = [str(req.id) for req in errors]
+    failures = [
+        SyncFailure(song_id=str(req.id), reason="Not found") for req in not_found
+    ] + [SyncFailure(song_id=str(req.id), reason="Error") for req in errors]
+    failure_count = len(failures)
+
+    logger.info("Playlist sync successful. Added {count} songs.", count=success_count)
     return Success(
-        SyncPlaylistResult(
-            successful=successful_ids, not_found=not_found_ids, errors=error_ids
+        SyncResult(
+            success_count=success_count,
+            failure_count=failure_count,
+            failures=failures,
+            successful=successful_ids,
+            not_found=not_found_ids,
+            errors=error_ids,
         )
     )

@@ -2,7 +2,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from src.shell.api import app
-from tests.unit.test_services import MockSpotifyClient, MockSupabaseClient
+from tests.mocks import MockSpotifyClient, MockSupabaseClient
 
 
 @pytest.mark.asyncio

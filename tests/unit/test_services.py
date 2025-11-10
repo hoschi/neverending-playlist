@@ -1,7 +1,7 @@
 import pytest
 from returns.result import Failure, Result, Success
 
-from src.core.models import Song, SongAdditionStatus, SongRequest, SyncPlaylistResult
+from src.core.models import Song, SongAdditionStatus, SongRequest, SyncResult
 from src.core.protocols import SpotifyClient, SupabaseClient
 from src.core.services.playlist_service import (
     add_songs_to_spotify,
@@ -131,7 +131,7 @@ async def test_sync_playlist_success_mixed_statuses() -> None:
     # Assert
     assert isinstance(result, Success)
     sync_result = result.unwrap()
-    assert isinstance(sync_result, SyncPlaylistResult)
+    assert isinstance(sync_result, SyncResult)
 
     # Check categorization
     assert len(sync_result.successful) == 2
@@ -211,7 +211,7 @@ async def test_sync_playlist_correct_categorization() -> None:
     # Assert
     assert isinstance(result, Success)
     sync_result = result.unwrap()
-    assert isinstance(sync_result, SyncPlaylistResult)
+    assert isinstance(sync_result, SyncResult)
 
     # Verify exact categorization
     assert set(sync_result.successful) == {"1", "4"}
@@ -292,7 +292,7 @@ async def test_sync_playlist_no_pending_requests() -> None:
     # Assert
     assert isinstance(result, Success)
     sync_result = result.unwrap()
-    assert isinstance(sync_result, SyncPlaylistResult)
+    assert isinstance(sync_result, SyncResult)
     assert len(sync_result.successful) == 0
     assert len(sync_result.not_found) == 0
     assert len(sync_result.errors) == 0
