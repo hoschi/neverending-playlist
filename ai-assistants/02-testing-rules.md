@@ -7,3 +7,4 @@
   - *Zweck:* Um die Robustheit über tausende von Fällen zu beweisen, nicht nur Einzelfälle.
 - **Mocking:** Verwende **IMMER** Test-Doubles, die dem `Protocol` der Abhängigkeit entsprechen. Nutze keine Magie-Mocks ohne Spezifikation.
   - *Zweck:* Um sicherzustellen, dass Mocks und echter Code synchron bleiben.
+- **Coverage:** Die Code Abdeckung kann nur analysiert werden wenn `pytest` ohne Pfadangabe einer Testdatei verwendet wird! Generell ist es immer besser `pytest` zu verwenden ohne einen spezifische Testdatei um eine fehlerfreie Ausführung zu garantieren.
