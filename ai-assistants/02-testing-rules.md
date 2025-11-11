@@ -8,3 +8,4 @@
 - **Mocking:** Verwende **IMMER** Test-Doubles, die dem `Protocol` der Abhängigkeit entsprechen. Nutze keine Magie-Mocks ohne Spezifikation.
   - *Zweck:* Um sicherzustellen, dass Mocks und echter Code synchron bleiben.
 - **Coverage:** Die Code Abdeckung kann nur analysiert werden wenn `pytest` ohne Pfadangabe einer Testdatei verwendet wird! Generell ist es immer besser `pytest` zu verwenden ohne einen spezifische Testdatei um eine fehlerfreie Ausführung zu garantieren.
+- **Test Driven Development:** Wenn tests existieren zu der vorliegenden Aufgabe ändere diese zu erst und danach die Implementierung um sicher zu gehen das die Tests auch korrekt funktionieren. Durch die fehlende Implementierung müssten die Tests fehlschlagen. Wenn sie das nicht tun analysiere wieso das so ist und ob hier etwas im Test fehlt. Wenn die Aufgabe komplex ist oder noch keine Tests existieren für die vorliegende Aufgabe schreibe erst die Implementierung und danach den Test.
