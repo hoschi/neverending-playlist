@@ -34,7 +34,6 @@ async def test_sync_playlist_success(
             SongRequest(
                 id=1,
                 song=Song(artist="A", title="B"),
-                requested_by="hoschi",
                 status=None,
             )
         ]
@@ -46,7 +45,6 @@ async def test_sync_playlist_success(
                 SongRequest(
                     id=1,
                     song=Song(artist="A", title="B"),
-                    requested_by="hoschi",
                     status=None,
                 ),
                 SongAdditionStatus.SUCCESS,

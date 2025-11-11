@@ -11,12 +11,8 @@ async def test_quickstart_workflow() -> None:
     """Integration test for the main playlist synchronization workflow."""
     # Arrange
     requests = [
-        SongRequest(
-            id=1, song=Song(artist="Artist 1", title="Title 1"), requested_by="User 1"
-        ),
-        SongRequest(
-            id=2, song=Song(artist="Artist 2", title="Title 2"), requested_by="User 2"
-        ),
+        SongRequest(id=1, song=Song(artist="Artist 1", title="Title 1")),
+        SongRequest(id=2, song=Song(artist="Artist 2", title="Title 2")),
     ]
     supabase_mock = MockSupabaseClient(pending_requests=requests)
     spotify_mock = MockSpotifyClient()

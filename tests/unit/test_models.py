@@ -8,7 +8,6 @@ def test_song_request_model_creation() -> None:
     song_request = SongRequest(
         id=1,
         song=song,
-        requested_by="test_user",
         status=None,
     )
 
@@ -16,7 +15,6 @@ def test_song_request_model_creation() -> None:
     assert song_request.id == 1
     assert song_request.song.artist == "Test Artist"
     assert song_request.song.title == "Test Title"
-    assert song_request.requested_by == "test_user"
     assert song_request.status is None
 
 
@@ -27,7 +25,6 @@ def test_song_request_model_with_status() -> None:
     song_request = SongRequest(
         id=1,
         song=song,
-        requested_by="test_user",
         status=SongAdditionStatus.SUCCESS,
     )
 
@@ -35,5 +32,4 @@ def test_song_request_model_with_status() -> None:
     assert song_request.id == 1
     assert song_request.song.artist == "Test Artist"
     assert song_request.song.title == "Test Title"
-    assert song_request.requested_by == "test_user"
     assert song_request.status == SongAdditionStatus.SUCCESS

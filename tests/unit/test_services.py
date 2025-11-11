@@ -100,18 +100,10 @@ async def test_sync_playlist_success_mixed_statuses() -> None:
     """
     # Arrange
     requests = [
-        SongRequest(
-            id=1, song=Song(artist="Artist 1", title="Title 1"), requested_by="User 1"
-        ),
-        SongRequest(
-            id=2, song=Song(artist="Artist 2", title="Title 2"), requested_by="User 2"
-        ),
-        SongRequest(
-            id=3, song=Song(artist="Artist 3", title="Title 3"), requested_by="User 3"
-        ),
-        SongRequest(
-            id=4, song=Song(artist="Artist 4", title="Title 4"), requested_by="User 4"
-        ),
+        SongRequest(id=1, song=Song(artist="Artist 1", title="Title 1")),
+        SongRequest(id=2, song=Song(artist="Artist 2", title="Title 2")),
+        SongRequest(id=3, song=Song(artist="Artist 3", title="Title 3")),
+        SongRequest(id=4, song=Song(artist="Artist 4", title="Title 4")),
     ]
 
     # Mixed statuses: 2 successful, 1 not found, 1 error
@@ -161,11 +153,7 @@ async def test_sync_playlist_song_processing_error() -> None:
     Tests error handling during song processing.
     """
     # Arrange
-    requests = [
-        SongRequest(
-            id=1, song=Song(artist="Artist 1", title="Title 1"), requested_by="User 1"
-        )
-    ]
+    requests = [SongRequest(id=1, song=Song(artist="Artist 1", title="Title 1"))]
     supabase_mock = MockSupabaseClient(pending_requests=requests)
     spotify_mock = MockSpotifyClient(should_fail=True)
 
@@ -186,11 +174,11 @@ async def test_sync_playlist_correct_categorization() -> None:
     """
     # Arrange
     requests = [
-        SongRequest(id=1, song=Song(artist="A1", title="T1"), requested_by="U1"),
-        SongRequest(id=2, song=Song(artist="A2", title="T2"), requested_by="U2"),
-        SongRequest(id=3, song=Song(artist="A3", title="T3"), requested_by="U3"),
-        SongRequest(id=4, song=Song(artist="A4", title="T4"), requested_by="U4"),
-        SongRequest(id=5, song=Song(artist="A5", title="T5"), requested_by="U5"),
+        SongRequest(id=1, song=Song(artist="A1", title="T1")),
+        SongRequest(id=2, song=Song(artist="A2", title="T2")),
+        SongRequest(id=3, song=Song(artist="A3", title="T3")),
+        SongRequest(id=4, song=Song(artist="A4", title="T4")),
+        SongRequest(id=5, song=Song(artist="A5", title="T5")),
     ]
 
     # All possible statuses
@@ -242,11 +230,7 @@ async def test_sync_playlist_database_error_handling() -> None:
     assert "Supabase fetch failed" in str(result.failure())
 
     # Test update failure
-    requests = [
-        SongRequest(
-            id=1, song=Song(artist="Artist 1", title="Title 1"), requested_by="User 1"
-        )
-    ]
+    requests = [SongRequest(id=1, song=Song(artist="Artist 1", title="Title 1"))]
     supabase_mock = MockSupabaseClient(
         pending_requests=requests, update_should_fail=True
     )
@@ -263,11 +247,7 @@ async def test_sync_playlist_api_error_handling() -> None:
     """
     Tests error handling when API operations fail.
     """
-    requests = [
-        SongRequest(
-            id=1, song=Song(artist="Artist 1", title="Title 1"), requested_by="User 1"
-        )
-    ]
+    requests = [SongRequest(id=1, song=Song(artist="Artist 1", title="Title 1"))]
 
     # Test Spotify API failure
     supabase_mock = MockSupabaseClient(pending_requests=requests)
@@ -319,11 +299,7 @@ async def test_add_songs_to_spotify_with_empty_list() -> None:
 async def test_fetch_pending_song_requests_success() -> None:
     """Tests successful fetching of pending song requests."""
     # Arrange
-    requests = [
-        SongRequest(
-            id=1, song=Song(artist="Artist 1", title="Title 1"), requested_by="User 1"
-        )
-    ]
+    requests = [SongRequest(id=1, song=Song(artist="Artist 1", title="Title 1"))]
     supabase_mock = MockSupabaseClient(pending_requests=requests)
 
     # Act

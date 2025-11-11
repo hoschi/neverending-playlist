@@ -23,7 +23,6 @@ class SongRequest(BaseModel):
 
     id: int = Field(..., description="The unique identifier for the song request.")
     song: Song = Field(..., description="The song being requested.")
-    requested_by: str = Field(..., description="The user who requested the song.")
     status: SongAdditionStatus | None = Field(
         default=None, description="The status of the song addition attempt to Spotify."
     )

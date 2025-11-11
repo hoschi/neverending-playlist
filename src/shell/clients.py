@@ -35,7 +35,6 @@ class ConcreteSupabaseClient(SupabaseClient):
                 SongRequest(
                     id=item["id"],
                     song=Song(artist=item["artist"], title=item["song"]),
-                    requested_by="hoschi",
                     status=None,
                 )
                 for item in response.data

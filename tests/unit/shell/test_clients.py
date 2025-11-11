@@ -60,7 +60,6 @@ async def test_fetch_pending_song_requests_success(
     assert first_request.id == 1
     assert first_request.song.artist == "Test Artist 1"
     assert first_request.song.title == "Test Song 1"
-    assert first_request.requested_by == "hoschi"
     assert first_request.status is None
 
     # Check second song request
@@ -68,7 +67,6 @@ async def test_fetch_pending_song_requests_success(
     assert second_request.id == 2
     assert second_request.song.artist == "Test Artist 2"
     assert second_request.song.title == "Test Song 2"
-    assert second_request.requested_by == "hoschi"
     assert second_request.status is None
 
     # Verify the correct Supabase query chain was used
@@ -201,7 +199,6 @@ async def test_fetch_pending_song_requests_song_with_status_none(
     assert song_request.id == 1
     assert song_request.song.artist == "Test Artist"
     assert song_request.song.title == "Test Song"
-    assert song_request.requested_by == "hoschi"
     assert song_request.status is None  # Should be None
 
 
@@ -213,13 +210,11 @@ async def test_fetch_pending_song_requests_song_with_status_none(
             SongRequest(
                 id=1,
                 song=Song(artist="Test Artist 1", title="Test Song 1"),
-                requested_by="hoschi",
                 status=None,
             ),
             SongRequest(
                 id=2,
                 song=Song(artist="Test Artist 2", title="Test Song 2"),
-                requested_by="hoschi",
                 status=None,
             ),
         ],
@@ -227,7 +222,6 @@ async def test_fetch_pending_song_requests_song_with_status_none(
             SongRequest(
                 id=3,
                 song=Song(artist="Test Artist 3", title="Test Song 3"),
-                requested_by="hoschi",
                 status=None,
             ),
         ],
@@ -295,7 +289,6 @@ async def test_update_song_requests_as_added_database_failure(
         SongRequest(
             id=1,
             song=Song(artist="Test Artist", title="Test Song"),
-            requested_by="hoschi",
             status=None,
         )
     ]
@@ -330,19 +323,16 @@ async def test_update_song_requests_as_added_multiple_ids(
         SongRequest(
             id=1,
             song=Song(artist="Test Artist 1", title="Test Song 1"),
-            requested_by="hoschi",
             status=None,
         ),
         SongRequest(
             id=2,
             song=Song(artist="Test Artist 2", title="Test Song 2"),
-            requested_by="hoschi",
             status=None,
         ),
         SongRequest(
             id=3,
             song=Song(artist="Test Artist 3", title="Test Song 3"),
-            requested_by="hoschi",
             status=None,
         ),
     ]
@@ -421,13 +411,11 @@ def concrete_spotify_client(mock_spotify_client: MagicMock) -> ConcreteSpotifyCl
                 SongRequest(
                     id=1,
                     song=Song(artist="Test Artist 1", title="Test Song 1"),
-                    requested_by="hoschi",
                     status=None,
                 ),
                 SongRequest(
                     id=2,
                     song=Song(artist="Test Artist 2", title="Test Song 2"),
-                    requested_by="hoschi",
                     status=None,
                 ),
             ],
@@ -444,19 +432,16 @@ def concrete_spotify_client(mock_spotify_client: MagicMock) -> ConcreteSpotifyCl
                 SongRequest(
                     id=1,
                     song=Song(artist="Test Artist 1", title="Test Song 1"),
-                    requested_by="hoschi",
                     status=None,
                 ),
                 SongRequest(
                     id=2,
                     song=Song(artist="Test Artist 2", title="Test Song 2"),
-                    requested_by="hoschi",
                     status=None,
                 ),
                 SongRequest(
                     id=3,
                     song=Song(artist="Test Artist 3", title="Test Song 3"),
-                    requested_by="hoschi",
                     status=None,
                 ),
             ],
@@ -474,13 +459,11 @@ def concrete_spotify_client(mock_spotify_client: MagicMock) -> ConcreteSpotifyCl
                 SongRequest(
                     id=1,
                     song=Song(artist="Test Artist 1", title="Test Song 1"),
-                    requested_by="hoschi",
                     status=None,
                 ),
                 SongRequest(
                     id=2,
                     song=Song(artist="Test Artist 2", title="Test Song 2"),
-                    requested_by="hoschi",
                     status=None,
                 ),
             ],
@@ -567,7 +550,6 @@ async def test_add_songs_to_playlist_api_failure(
         SongRequest(
             id=1,
             song=Song(artist="Test Artist", title="Test Song"),
-            requested_by="hoschi",
             status=None,
         )
     ]
@@ -606,7 +588,6 @@ async def test_add_songs_to_playlist_search_failure(
         SongRequest(
             id=1,
             song=Song(artist="Test Artist", title="Test Song"),
-            requested_by="hoschi",
             status=None,
         )
     ]
