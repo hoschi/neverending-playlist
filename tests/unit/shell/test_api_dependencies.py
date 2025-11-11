@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-from spotipy.oauth2 import SpotifyOAuth  # type: ignore
 
 from src.core.protocols import SpotifyClient, SupabaseClient
 from src.core.services.encryption_service import EncryptionService
@@ -66,6 +65,8 @@ def test_get_spotify_client():
 
 def test_get_spotify_oauth():
     """Test that the Spotify OAuth provider returns a valid manager."""
+    from spotipy.oauth2 import SpotifyOAuth
+
     oauth_manager = get_spotify_oauth()
     assert isinstance(oauth_manager, SpotifyOAuth)
 

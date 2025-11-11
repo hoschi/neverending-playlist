@@ -2,7 +2,7 @@ import base64
 
 import pytest
 from cryptography.fernet import Fernet
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from src.core.services.encryption_service import EncryptionService
 
@@ -11,7 +11,7 @@ def test_encrypt_decrypt_roundtrip() -> None:
     """Test that encrypting and then decrypting a value returns the original value."""
     # Arrange
     key = Fernet.generate_key().decode()  # Generate a valid, base64-encoded key
-    service = EncryptionService(key=key)
+    service = EncryptionService(key=SecretStr(key))
     original_value = "my-secret-refresh-token"
 
     # Act
@@ -30,7 +30,7 @@ def test_encryption_service_with_invalid_key_raises_validation_error() -> None:
 
     # Act & Assert
     with pytest.raises(ValidationError) as exc_info:
-        EncryptionService(key=invalid_key)
+        EncryptionService(key=SecretStr(invalid_key))
     assert "Invalid encryption key" in str(exc_info.value)
 
 
@@ -42,5 +42,5 @@ def test_encryption_service_with_wrong_key_length_raises_validation_error() -> N
 
     # Act & Assert
     with pytest.raises(ValidationError) as exc_info:
-        EncryptionService(key=wrong_length_key)
+        EncryptionService(key=SecretStr(wrong_length_key))
     assert "Decoded encryption key must be 32 bytes long" in str(exc_info.value)

@@ -104,7 +104,7 @@ check_untyped_defs = true
 disallow_untyped_decorators = true
 strict = true
 show_error_codes = true
-files = ["src/"]
+files = ["src/", "tests/"]
 
 # Gelockerte Einstellungen für Tests
 [[tool.mypy.overrides]]

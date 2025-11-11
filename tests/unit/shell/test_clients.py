@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -488,7 +489,7 @@ async def test_add_songs_to_playlist_success(
     concrete_spotify_client: ConcreteSpotifyClient,
     mock_spotify_client: MagicMock,
     song_requests: list[SongRequest],
-    search_results: list[dict],
+    search_results: list[dict[str, Any]],
     expected_problems: list[str],
     expected_calls: int,
 ) -> None:

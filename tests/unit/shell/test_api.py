@@ -4,7 +4,6 @@ import pytest
 from fastapi import HTTPException, Request
 from fastapi.testclient import TestClient
 from returns.result import Success
-from spotipy.oauth2 import SpotifyOAuth  # type: ignore
 
 from src.core.models import SyncFailure, SyncResult
 from src.core.services.encryption_service import EncryptionService
@@ -22,6 +21,8 @@ def mock_request():
 @pytest.fixture
 def mock_oauth_manager():
     """Provides a mock SpotifyOAuth manager."""
+    from spotipy.oauth2 import SpotifyOAuth
+
     return Mock(spec=SpotifyOAuth)
 
 
