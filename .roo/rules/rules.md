@@ -1,1 +1,1 @@
-Lies dir die Datei `<root>/ai-assistants/01-main-directives.md` durch, bevor du anfängst.
+Lies dir alle Datein in `<root>/ai-assistants/` durch, bevor du anfängst.
