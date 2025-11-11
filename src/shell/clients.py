@@ -19,13 +19,14 @@ class ConcreteSupabaseClient(SupabaseClient):
         self.client: Client = create_client(
             settings.supabase_url, settings.supabase_key
         )
+        self.table_name = settings.supabase_table
 
     async def fetch_pending_song_requests(
         self, max_count: int
     ) -> Result[list[SongRequest], Exception]:
         try:
             response = (
-                self.client.table("_spotify_to_supabase_test")
+                self.client.table(self.table_name)
                 .select("*")
                 .is_("status", "null")
                 .limit(max_count)
@@ -51,7 +52,7 @@ class ConcreteSupabaseClient(SupabaseClient):
             for song_request in song_requests:
                 # Update the database with the status
                 (
-                    self.client.table("_spotify_to_supabase_test")
+                    self.client.table(self.table_name)
                     .update(
                         {
                             "status": song_request.status.value

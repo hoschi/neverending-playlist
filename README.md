@@ -151,10 +151,10 @@ Weitere Details finden Sie in der [Supabase Dokumentation](https://supabase.com/
 
 #### Database Schema
 
-Here is the SQL statement to create the `_spotify_to_supabase_test` table:
+Here is the SQL statement to create the table (replace `your_table_name` with your actual table name):
 
 ```sql
-CREATE TABLE public._spotify_to_supabase_test (
+CREATE TABLE public.your_table_name (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     artist TEXT NOT NULL,
     song TEXT NOT NULL,
@@ -166,7 +166,7 @@ CREATE TABLE public._spotify_to_supabase_test (
 To copy data from an existing table with `artist` and `song` columns into the newly created table, you can use the following SQL command. Replace `your_existing_table` with the name of your source table.
 
 ```sql
-INSERT INTO public._spotify_to_supabase_test (artist, song)
+INSERT INTO public.your_table_name (artist, song)
 SELECT artist, song
 FROM your_existing_table;
 ```
@@ -174,7 +174,7 @@ FROM your_existing_table;
 If you want to import only a limited number of records, for example 30, you can add `LIMIT 30` to the query:
 
 ```sql
-INSERT INTO public._spotify_to_supabase_test (artist, song)
+INSERT INTO public.your_table_name (artist, song)
 SELECT artist, song
 FROM your_existing_table
 LIMIT 30;

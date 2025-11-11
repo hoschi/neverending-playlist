@@ -18,8 +18,11 @@ def concrete_supabase_client(mock_supabase_client: MagicMock) -> ConcreteSupabas
     """Provides a ConcreteSupabaseClient instance with mocked dependencies."""
     with (
         patch("src.shell.clients.create_client", return_value=mock_supabase_client),
-        patch("src.shell.clients.get_settings"),
+        patch("src.shell.clients.get_settings") as mock_settings,
     ):
+        mock_settings_instance = MagicMock()
+        mock_settings_instance.supabase_table = "_spotify_to_supabase_test"
+        mock_settings.return_value = mock_settings_instance
         return ConcreteSupabaseClient()
 
 
