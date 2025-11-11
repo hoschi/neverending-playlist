@@ -32,3 +32,4 @@ ssl/
 .cache/
 .cache
 .claude_consciousness.m8
+.env.mine
