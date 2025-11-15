@@ -41,7 +41,7 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 
 ## Testabdeckung
 
-- **Unit-Tests:** Testen die neue Logik in `core/services/` und `core/models.py`
+- **Unit-Tests:** Testen Core Logik in `core/services/` und `core/models.py`
 - **Integrationstests:** Testen den vollständigen Sync-Flow und API-Endpunkte
 - **Contract-Tests:** Testen die API-Spezifikation mit `/sync-playlist` Endpunkt
 
