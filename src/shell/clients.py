@@ -129,7 +129,6 @@ class ConcreteSpotifyClient(SpotifyClient):
                         self.client.playlist_add_items(
                             settings.spotify_playlist_id, [track_uri]
                         )
-                        # TODO check return value if it is really a success!
                         # Update the song request with the status
                         song.status = SongAdditionStatus.SUCCESS
                         results.append((song, SongAdditionStatus.SUCCESS))
@@ -138,6 +137,7 @@ class ConcreteSpotifyClient(SpotifyClient):
                         song.status = SongAdditionStatus.NOT_FOUND
                         results.append((song, SongAdditionStatus.NOT_FOUND))
 
+                # recover from error
                 except Exception as e:
                     # Error processing individual song
                     song.status = SongAdditionStatus.ERROR
@@ -147,5 +147,6 @@ class ConcreteSpotifyClient(SpotifyClient):
                     results.append((song, SongAdditionStatus.ERROR))
 
             return Success(results)
+        # can't recover from this error
         except Exception as e:
             return Result.from_failure(e)

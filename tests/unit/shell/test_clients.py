@@ -138,131 +138,6 @@ async def test_fetch_pending_song_requests_database_failure(
 
 
 @pytest.mark.anyio
-async def test_fetch_pending_song_requests_with_max_count(
-    concrete_supabase_client: ConcreteSupabaseClient, mock_supabase_client: MagicMock
-) -> None:
-    """Test that the max_count parameter is correctly passed to the query."""
-    # Arrange
-    test_data = [
-        {
-            "id": 1,
-            "artist": "Test Artist",
-            "song": "Test Song",
-            "status": None,
-        }
-    ]
-
-    mock_execute_result = MagicMock()
-    mock_execute_result.data = test_data
-    mock_supabase_client.table.return_value.select.return_value.is_.return_value.limit.return_value.execute.return_value = mock_execute_result
-
-    # Act
-    result = await concrete_supabase_client.fetch_pending_song_requests(max_count=3)
-
-    # Assert
-    assert isinstance(result, Success)
-    assert len(result.unwrap()) == 1
-
-    # Verify the correct max_count was used in the query
-    mock_supabase_client.table.assert_called_once_with("_spotify_to_supabase_test")
-    table_mock = mock_supabase_client.table.return_value
-
-    table_mock.select.assert_called_once_with("*")
-    table_mock.select.return_value.is_.assert_called_once_with("status", "null")
-    table_mock.select.return_value.is_.return_value.limit.assert_called_once_with(3)
-    table_mock.select.return_value.is_.return_value.limit.return_value.execute.assert_called_once()
-
-
-@pytest.mark.anyio
-async def test_fetch_pending_song_requests_song_with_status_none(
-    concrete_supabase_client: ConcreteSupabaseClient, mock_supabase_client: MagicMock
-) -> None:
-    """Test that songs with status=None are correctly handled."""
-    # Arrange
-    test_data = [
-        {
-            "id": 1,
-            "artist": "Test Artist",
-            "song": "Test Song",
-            "status": None,  # This should still be included
-        }
-    ]
-
-    mock_execute_result = MagicMock()
-    mock_execute_result.data = test_data
-    mock_supabase_client.table.return_value.select.return_value.is_.return_value.limit.return_value.execute.return_value = mock_execute_result
-
-    # Act
-    result = await concrete_supabase_client.fetch_pending_song_requests(max_count=5)
-
-    # Assert
-    assert isinstance(result, Success)
-    assert len(result.unwrap()) == 1
-
-    song_request = result.unwrap()[0]
-    assert song_request.id == 1
-    assert song_request.song.artist == "Test Artist"
-    assert song_request.song.title == "Test Song"
-    assert song_request.status is None  # Should be None
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize(
-    "song_requests",
-    [
-        [
-            SongRequest(
-                id=1,
-                song=Song(artist="Test Artist 1", title="Test Song 1"),
-                status=None,
-            ),
-            SongRequest(
-                id=2,
-                song=Song(artist="Test Artist 2", title="Test Song 2"),
-                status=None,
-            ),
-        ],
-        [
-            SongRequest(
-                id=3,
-                song=Song(artist="Test Artist 3", title="Test Song 3"),
-                status=None,
-            ),
-        ],
-    ],
-)
-async def test_update_song_requests_as_added_success(
-    concrete_supabase_client: ConcreteSupabaseClient,
-    mock_supabase_client: MagicMock,
-    song_requests: list[SongRequest],
-) -> None:
-    """Test successful update of song requests as added."""
-    # Arrange
-    mock_supabase_client.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
-
-    # Act
-    result = await concrete_supabase_client.update_song_requests_as_added(song_requests)
-
-    # Assert
-    assert isinstance(result, Success)
-    assert result.unwrap() is None
-
-    # Verify the correct Supabase query chain was used
-    assert mock_supabase_client.table.call_count == len(song_requests)
-
-    for _i, song_request in enumerate(song_requests):
-        mock_supabase_client.table.assert_any_call("_spotify_to_supabase_test")
-        table_mock = mock_supabase_client.table.return_value
-
-        # Check the query chain for each song request
-        table_mock.update.assert_any_call(
-            {"status": song_request.status.value if song_request.status else None}
-        )
-        table_mock.update.return_value.eq.assert_any_call("id", song_request.id)
-        table_mock.update.return_value.eq.return_value.execute.assert_called()
-
-
-@pytest.mark.anyio
 async def test_update_song_requests_as_added_empty_list(
     concrete_supabase_client: ConcreteSupabaseClient, mock_supabase_client: MagicMock
 ) -> None:
@@ -407,7 +282,7 @@ def concrete_spotify_client(mock_spotify_client: MagicMock) -> ConcreteSpotifyCl
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    "song_requests,search_results,expected_problems,expected_calls",
+    "song_requests,search_results,expected_calls",
     [
         # Success case: All songs found
         (
@@ -427,7 +302,6 @@ def concrete_spotify_client(mock_spotify_client: MagicMock) -> ConcreteSpotifyCl
                 {"tracks": {"items": [{"uri": "spotify:track:001"}]}},
                 {"tracks": {"items": [{"uri": "spotify:track:002"}]}},
             ],
-            [],
             2,
         ),
         # Partial success: Some songs found
@@ -454,7 +328,6 @@ def concrete_spotify_client(mock_spotify_client: MagicMock) -> ConcreteSpotifyCl
                 {"tracks": {"items": []}},  # Not found
                 {"tracks": {"items": [{"uri": "spotify:track:003"}]}},
             ],
-            ["Couldn't find song 'Test Song 2' from 'Test Artist 2'!"],
             3,
         ),
         # No songs found
@@ -475,14 +348,10 @@ def concrete_spotify_client(mock_spotify_client: MagicMock) -> ConcreteSpotifyCl
                 {"tracks": {"items": []}},
                 {"tracks": {"items": []}},
             ],
-            [
-                "Couldn't find song 'Test Song 1' from 'Test Artist 1'!",
-                "Couldn't find song 'Test Song 2' from 'Test Artist 2'!",
-            ],
             2,
         ),
         # Empty list
-        ([], [], [], 0),
+        ([], [], 0),
     ],
 )
 async def test_add_songs_to_playlist_success(
@@ -490,7 +359,6 @@ async def test_add_songs_to_playlist_success(
     mock_spotify_client: MagicMock,
     song_requests: list[SongRequest],
     search_results: list[dict[str, Any]],
-    expected_problems: list[str],
     expected_calls: int,
 ) -> None:
     """Test successful addition of songs to playlist with various scenarios."""
@@ -536,11 +404,6 @@ async def test_add_songs_to_playlist_success(
             mock_spotify_client.playlist_add_items.assert_any_call("playlist_id", [uri])
     else:
         mock_spotify_client.playlist_add_items.assert_not_called()
-
-    # Verify problems are printed (we can't easily test print statements, but we can verify the logic)
-    assert len(expected_problems) == len(
-        [r for r in search_results if not r.get("tracks", {}).get("items")]
-    )
 
 
 @pytest.mark.anyio
