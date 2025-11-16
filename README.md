@@ -65,7 +65,7 @@ nbstripout --install
 1. Copy `.env.example` to `.env`.
 2. Enter your Supabase and Spotify API credentials in the `.env` file.
 
-### Linking your Spotify Account
+### 4. Linking your Spotify Account
 
 To link your Spotify account to the service, follow these steps:
 
@@ -101,7 +101,7 @@ To link your Spotify account to the service, follow these steps:
 
 For more details on Spotify OAuth, see the [Spotipy documentation](https://spotipy.readthedocs.io/en/latest/#authorization-code-flow) and the [Spotify Developer Guide](https://developer.spotify.com/documentation/web-api/tutorials/code-flow).
 
-### 4. Authorization
+### 5. Authorization
 This application uses the OAuth 2.0 Authorization Code Flow to access your Spotify account. You must authorize it once before you can use the `/sync-playlist` endpoint.
 
 1.  **Configure Environment**: Ensure your `.env` file has the correct `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET`, and `SPOTIPY_REDIRECT_URI`. The `SPOTIPY_REDIRECT_URI` must match what you have configured in your Spotify Developer Dashboard.
@@ -120,7 +120,7 @@ This application uses the OAuth 2.0 Authorization Code Flow to access your Spoti
 
 Upon successful authorization, the application will automatically encrypt and save a `SPOTIFY_REFRESH_TOKEN` to your `.env` file. The service will use this token to stay logged in.
 
-### 5. Supabase
+### 6. Supabase
 
 #### Locally Hosted Supabase Instance
 
@@ -179,7 +179,7 @@ FROM your_existing_table
 LIMIT 30;
 ```
 
-### 6. Setup SSL Certificates
+### 7. Setup SSL Certificates
 
 For development with HTTPS, you need to create SSL certificates and keys. This guide shows you how to create self-signed certificates for local development.
 
