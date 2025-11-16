@@ -31,10 +31,12 @@ class MockSpotifyClient(SpotifyClient):
         self.added_songs: list[SongRequest] = []
         self.should_fail = should_fail
 
-    async def get_current_user(self):
+    async def get_current_user(self) -> Success[dict[str, str] | None]:
         return Success({"id": "test_user"})
 
-    async def add_songs_to_playlist(self, songs: list[SongRequest]):
+    async def add_songs_to_playlist(
+        self, songs: list[SongRequest]
+    ) -> Success[list[tuple[SongRequest, SongAdditionStatus]]]:
         if self.should_fail:
             raise Exception("Spotify API failed")
         self.added_songs.extend(songs)

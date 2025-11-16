@@ -247,32 +247,23 @@ def mock_spotify_client() -> MagicMock:
 
 
 @pytest.fixture
-def concrete_spotify_client(mock_spotify_client: MagicMock) -> ConcreteSpotifyClient:
+def concrete_spotify_client(
+    mock_spotify_client: MagicMock, mock_settings
+) -> ConcreteSpotifyClient:
     """Provides a ConcreteSpotifyClient instance with mocked dependencies."""
     with (
-        patch("src.shell.clients.get_settings") as mock_settings,
+        patch("src.shell.clients.get_settings", return_value=mock_settings),
         patch("src.shell.clients.EncryptionService") as mock_encryption,
         patch("src.shell.clients.SpotifyOAuth") as mock_auth,
         patch("src.shell.clients.spotipy.Spotify") as mock_spotify,
     ):
-        # Mock settings
-        mock_settings_instance = MagicMock()
-        mock_settings_instance.spotify_refresh_token = "test_token"
-        mock_settings_instance.spotify_playlist_id = (
-            "playlist_id"  # Use the actual ID from the test environment
-        )
-        mock_settings_instance.encryption_key = "test_key"
-        mock_settings_instance.spotipy_client_id = "test_client_id"
-        mock_settings_instance.spotipy_client_secret = "test_client_secret"
-        mock_settings_instance.spotipy_redirect_uri = "test_redirect_uri"
-        mock_settings.return_value = mock_settings_instance
-
         # Mock encryption
         mock_encryption.return_value.decrypt.return_value = "decrypted_token"
 
         # Mock auth
         mock_auth_instance = MagicMock()
         mock_auth.return_value = mock_auth_instance
+        mock_auth_instance.refresh_access_token.return_value = {"access_token": "test"}
 
         # Mock spotify client
         mock_spotify.return_value = mock_spotify_client
@@ -357,6 +348,7 @@ def concrete_spotify_client(mock_spotify_client: MagicMock) -> ConcreteSpotifyCl
 async def test_add_songs_to_playlist_success(
     concrete_spotify_client: ConcreteSpotifyClient,
     mock_spotify_client: MagicMock,
+    mock_settings,
     song_requests: list[SongRequest],
     search_results: list[dict[str, Any]],
     expected_calls: int,
@@ -401,7 +393,9 @@ async def test_add_songs_to_playlist_success(
         assert mock_spotify_client.playlist_add_items.call_count == len(found_uris)
         # Verify each call contains a single URI in a list
         for uri in found_uris:
-            mock_spotify_client.playlist_add_items.assert_any_call("playlist_id", [uri])
+            mock_spotify_client.playlist_add_items.assert_any_call(
+                mock_settings.spotify_playlist_id, [uri]
+            )
     else:
         mock_spotify_client.playlist_add_items.assert_not_called()
 
@@ -410,6 +404,7 @@ async def test_add_songs_to_playlist_success(
 async def test_add_songs_to_playlist_api_failure(
     concrete_spotify_client: ConcreteSpotifyClient,
     mock_spotify_client: MagicMock,
+    mock_settings,
 ) -> None:
     """Test addition of songs to playlist when Spotify API fails."""
     # Arrange
@@ -440,7 +435,7 @@ async def test_add_songs_to_playlist_api_failure(
         q="artist:Test Artist track:Test Song", type="track", limit=1
     )
     mock_spotify_client.playlist_add_items.assert_called_once_with(
-        "playlist_id", ["spotify:track:001"]
+        mock_settings.spotify_playlist_id, ["spotify:track:001"]
     )
 
 
@@ -471,6 +466,188 @@ async def test_add_songs_to_playlist_search_failure(
     assert result.unwrap()[0][1] == SongAdditionStatus.ERROR
 
     # Verify the search was called
+    mock_spotify_client.search.assert_called_once_with(
+        q="artist:Test Artist track:Test Song", type="track", limit=1
+    )
+
+
+async def test_add_songs_to_playlist_malformed_search_results(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test addition of songs when search returns malformed results."""
+    # Arrange
+    song_requests = [
+        SongRequest(
+            id=1,
+            song=Song(artist="Test Artist", title="Test Song"),
+            status=None,
+        )
+    ]
+
+    # Mock search to return result without tracks key
+    mock_spotify_client.search.return_value = {"some_other_key": "value"}
+
+    # Act
+    result = await concrete_spotify_client.add_songs_to_playlist(song_requests)
+
+    # Assert
+    assert isinstance(result, Success)
+    assert len(result.unwrap()) == 1
+    # Since "tracks" key is missing, it will raise KeyError which is caught as ERROR
+    assert result.unwrap()[0][1] == SongAdditionStatus.ERROR
+
+    # Verify search was called
+    mock_spotify_client.search.assert_called_once_with(
+        q="artist:Test Artist track:Test Song", type="track", limit=1
+    )
+
+    # Verify playlist_add_items was not called
+    mock_spotify_client.playlist_add_items.assert_not_called()
+
+
+@pytest.mark.anyio
+def test_concrete_spotify_client_init_missing_refresh_token() -> None:
+    """Test ConcreteSpotifyClient initialization when refresh token is missing."""
+    # Arrange
+    mock_settings_missing_token = MagicMock()
+    mock_settings_missing_token.spotify_refresh_token = None
+    mock_settings_missing_token.spotify_client_id = "test_client_id"
+    mock_settings_missing_token.spotify_client_secret = "test_client_secret"
+    mock_settings_missing_token.spotify_redirect_uri = "http://test-redirect"
+    mock_settings_missing_token.encryption_key = "test_key"
+
+    with (
+        patch(
+            "src.shell.clients.get_settings", return_value=mock_settings_missing_token
+        ),
+        pytest.raises(
+            ValueError, match="Spotify refresh token not found in environment"
+        ),
+    ):
+        ConcreteSpotifyClient()
+
+
+@pytest.mark.anyio
+def test_concrete_spotify_client_init_encryption_error() -> None:
+    """Test ConcreteSpotifyClient initialization when decryption fails."""
+    # Arrange
+    mock_settings = MagicMock()
+    mock_settings.spotify_refresh_token = "invalid_token"
+    mock_settings.spotify_client_id = "test_client_id"
+    mock_settings.spotify_client_secret = "test_client_secret"
+    mock_settings.spotify_redirect_uri = "http://test-redirect"
+    mock_settings.encryption_key = "test_key"
+
+    with (
+        patch("src.shell.clients.get_settings", return_value=mock_settings),
+        patch("src.shell.clients.EncryptionService") as mock_encryption,
+    ):
+        # Mock encryption service to raise exception
+        mock_encryption.return_value.decrypt.side_effect = Exception(
+            "Decryption failed"
+        )
+
+        # Act & Assert
+        with pytest.raises(Exception, match="Decryption failed"):
+            ConcreteSpotifyClient()
+
+
+@pytest.mark.anyio
+def test_concrete_spotify_client_init_auth_error() -> None:
+    """Test ConcreteSpotifyClient initialization when auth refresh fails."""
+    # Arrange
+    mock_settings = MagicMock()
+    mock_settings.spotify_refresh_token = "encrypted_token"
+    mock_settings.spotify_client_id = "test_client_id"
+    mock_settings.spotify_client_secret = "test_client_secret"
+    mock_settings.spotify_redirect_uri = "http://test-redirect"
+    mock_settings.encryption_key = "test_key"
+
+    with (
+        patch("src.shell.clients.get_settings", return_value=mock_settings),
+        patch("src.shell.clients.EncryptionService") as mock_encryption,
+        patch("src.shell.clients.SpotifyOAuth") as mock_auth,
+    ):
+        # Mock encryption
+        mock_encryption.return_value.decrypt.return_value = "decrypted_token"
+
+        # Mock auth to raise exception
+        mock_auth_instance = MagicMock()
+        mock_auth_instance.refresh_access_token.side_effect = Exception(
+            "Auth refresh failed"
+        )
+        mock_auth.return_value = mock_auth_instance
+
+        # Act & Assert
+        with pytest.raises(Exception, match="Auth refresh failed"):
+            ConcreteSpotifyClient()
+
+
+@pytest.mark.anyio
+async def test_get_current_user_success(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test successful retrieval of current user information."""
+    # Arrange
+    mock_user_info = {"id": "test_user", "display_name": "Test User"}
+    mock_spotify_client.current_user.return_value = mock_user_info
+
+    # Act
+    result = await concrete_spotify_client.get_current_user()
+
+    # Assert
+    assert isinstance(result, Success)
+    assert result.unwrap() == mock_user_info
+    mock_spotify_client.current_user.assert_called_once()
+
+
+@pytest.mark.anyio
+async def test_get_current_user_api_error(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test get_current_user when Spotify API fails."""
+    # Arrange
+    mock_spotify_client.current_user.side_effect = Exception("API Error")
+
+    # Act
+    result = await concrete_spotify_client.get_current_user()
+
+    # Assert
+    assert isinstance(result, Failure)
+    assert isinstance(result.failure(), Exception)
+    assert str(result.failure()) == "API Error"
+    mock_spotify_client.current_user.assert_called_once()
+
+
+async def test_add_songs_to_playlist_empty_search_results(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test addition of songs when search returns completely empty results."""
+    # Arrange
+    song_requests = [
+        SongRequest(
+            id=1,
+            song=Song(artist="Test Artist", title="Test Song"),
+            status=None,
+        )
+    ]
+
+    # Mock search to return empty dict
+    mock_spotify_client.search.return_value = {}
+
+    # Act
+    result = await concrete_spotify_client.add_songs_to_playlist(song_requests)
+
+    # Assert
+    assert isinstance(result, Success)
+    assert len(result.unwrap()) == 1
+    assert result.unwrap()[0][1] == SongAdditionStatus.NOT_FOUND
+
+    # Verify search was called
     mock_spotify_client.search.assert_called_once_with(
         q="artist:Test Artist track:Test Song", type="track", limit=1
     )

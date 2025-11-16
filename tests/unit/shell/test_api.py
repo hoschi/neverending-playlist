@@ -45,24 +45,31 @@ def test_callback_without_current_user(
         "scope": "test_scope",
     }
 
-    # Mock spotipy.Spotify to return None for current_user
-    with patch("spotipy.Spotify") as mock_spotify_class:
-        mock_spotify_instance = Mock()
-        mock_spotify_instance.current_user.return_value = None
-        mock_spotify_class.return_value = mock_spotify_instance
+    # Mock ConcreteSpotifyClient to simulate the callback behavior
+    with patch("src.shell.clients.ConcreteSpotifyClient") as MockSpotifyClient:
+        mock_client_instance = Mock()
+        mock_client_instance.get_current_user.return_value = Success(None)
+        MockSpotifyClient.return_value = mock_client_instance
 
-        # Act & Assert
-        with pytest.raises(HTTPException) as exc_info:
-            callback(
-                code="test_code",
-                oauth_manager=mock_oauth_manager,
-                encryption_service=mock_encryption_service,
+        # Create a temp client using Spotipy.Spotify to get user - but mock it to return None
+        with patch("spotipy.Spotify") as mock_spotify_class:
+            mock_spotify_instance = Mock()
+            mock_spotify_instance.current_user.return_value = None
+            mock_spotify_class.return_value = mock_spotify_instance
+
+            # Act & Assert
+            with pytest.raises(HTTPException) as exc_info:
+                callback(
+                    code="test_code",
+                    oauth_manager=mock_oauth_manager,
+                    encryption_service=mock_encryption_service,
+                )
+
+            assert exc_info.value.status_code == 500
+            assert (
+                "Failed to retrieve user information from Spotify."
+                in exc_info.value.detail
             )
-
-        assert exc_info.value.status_code == 500
-        assert (
-            "Failed to retrieve user information from Spotify." in exc_info.value.detail
-        )
 
 
 def test_callback_with_valid_user(
@@ -78,29 +85,42 @@ def test_callback_with_valid_user(
         "scope": "playlist-modify-public playlist-modify-private",
     }
 
-    # Mock spotipy.Spotify to return valid user
-    with (
-        patch("spotipy.Spotify") as mock_spotify_class,
-        patch("src.shell.api.set_key") as mock_set_key,
-    ):
-        mock_spotify_instance = Mock()
-        mock_spotify_instance.current_user.return_value = {"id": "test_user_id"}
-        mock_spotify_class.return_value = mock_spotify_instance
-        mock_encryption_service.encrypt.return_value = "encrypted_token"
-
-        # Act
-        result = callback(
-            code="test_code",
-            oauth_manager=mock_oauth_manager,
-            encryption_service=mock_encryption_service,
+    # Mock ConcreteSpotifyClient to simulate the callback behavior
+    with patch("src.shell.clients.ConcreteSpotifyClient") as MockSpotifyClient:
+        mock_client_instance = Mock()
+        mock_client_instance.get_current_user.return_value = Success(
+            {"id": "test_user_id"}
         )
+        MockSpotifyClient.return_value = mock_client_instance
 
-        # Assert
-        assert result == {"status": "success", "message": "Successfully authenticated."}
-        mock_encryption_service.encrypt.assert_called_once_with("test_refresh_token")
-        mock_set_key.assert_called_once_with(
-            ".env", "SPOTIFY_REFRESH_TOKEN", "encrypted_token"
-        )
+        # Mock spotipy.Spotify to return valid user
+        with (
+            patch("spotipy.Spotify") as mock_spotify_class,
+            patch("src.shell.api.set_key") as mock_set_key,
+        ):
+            mock_spotify_instance = Mock()
+            mock_spotify_instance.current_user.return_value = {"id": "test_user_id"}
+            mock_spotify_class.return_value = mock_spotify_instance
+            mock_encryption_service.encrypt.return_value = "encrypted_token"
+
+            # Act
+            result = callback(
+                code="test_code",
+                oauth_manager=mock_oauth_manager,
+                encryption_service=mock_encryption_service,
+            )
+
+            # Assert
+            assert result == {
+                "status": "success",
+                "message": "Successfully authenticated.",
+            }
+            mock_encryption_service.encrypt.assert_called_once_with(
+                "test_refresh_token"
+            )
+            mock_set_key.assert_called_once_with(
+                ".env", "SPOTIFY_REFRESH_TOKEN", "encrypted_token"
+            )
 
 
 def test_callback_without_request_token_400(
@@ -129,8 +149,12 @@ def test_callback_without_request_token_400(
 
 
 @pytest.mark.asyncio
-async def test_sync_playlist_success_returns_200(client: TestClient) -> None:
+async def test_sync_playlist_success_returns_200(
+    client: TestClient, mock_spotify_client
+) -> None:
     """Test sync_playlist_endpoint returns 200 on success."""
+    from src.shell.api import app, get_spotify_client
+
     sync_result = SyncResult(
         success_count=3,
         failure_count=0,
@@ -139,6 +163,9 @@ async def test_sync_playlist_success_returns_200(client: TestClient) -> None:
         not_found=[],
         errors=[],
     )
+
+    # Override the dependency
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
 
     with patch("src.shell.api.sync_playlist", return_value=Success(sync_result)):
         response = client.post("/sync-playlist")
@@ -151,10 +178,17 @@ async def test_sync_playlist_success_returns_200(client: TestClient) -> None:
             "errors": [],
         }
 
+    # Clean up
+    app.dependency_overrides.clear()
+
 
 @pytest.mark.asyncio
-async def test_sync_playlist_returns_207_on_partial_failure(client: TestClient) -> None:
+async def test_sync_playlist_returns_207_on_partial_failure(
+    client: TestClient, mock_spotify_client
+) -> None:
     """Test sync_playlist_endpoint returns JSONResponse 207 on partial failure."""
+    from src.shell.api import app, get_spotify_client
+
     sync_result = SyncResult(
         success_count=2,
         failure_count=1,
@@ -163,6 +197,9 @@ async def test_sync_playlist_returns_207_on_partial_failure(client: TestClient) 
         not_found=[],
         errors=["3"],
     )
+
+    # Override the dependency
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
 
     with patch("src.shell.api.sync_playlist", return_value=Success(sync_result)):
         response = client.post("/sync-playlist")
@@ -174,3 +211,6 @@ async def test_sync_playlist_returns_207_on_partial_failure(client: TestClient) 
             "not_found": [],
             "errors": ["123: Timeout"],
         }
+
+    # Clean up
+    app.dependency_overrides.clear()

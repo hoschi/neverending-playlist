@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from typing import ClassVar
 
@@ -32,7 +33,9 @@ class Settings(BaseSettings):
     ssl_key_path: str = "ssl/key.pem"
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=".env.test" if os.getenv("TESTING") == "true" else ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
 
