@@ -122,31 +122,31 @@ Upon successful authorization, the application will automatically encrypt and sa
 
 ### 5. Supabase
 
-#### Lokal gehostete Supabase-Instanz
+#### Locally Hosted Supabase Instance
 
-**Zugangsdaten finden**:
+**Finding Access Credentials**:
 - Go to your local Supabase UI
-- In der rechten oberen Ecke auf das Profil Icon clicken, "Command Menu" auswählen 
+- Click on the profile icon in the top right corner and select "Command Menu"
 - Run "Copy API URL" and paste it into `SUPABASE_URL` in the `.env` file
 - Run "Get API keys", select "Copy service API key" and paste it into `SUPABASE_KEY` in the `.env` file
 
 #### Supabase Cloud (https://supabase.com/)
 
-1. **Projekt erstellen**:
-   - Melden Sie sich bei Supabase an und erstellen Sie ein neues Projekt
-   - Wählen Sie eine Region nahe Ihres Standorts für bessere Performance
-2. **Zugangsdaten finden**:
-   - Nach der Projekterstellung gehen Sie zu Project Settings > API
-   - Kopieren Sie die `URL` und `public anon key` in Ihre `.env` Datei:
+1. **Create Project**:
+   - Log in to Supabase and create a new project
+   - Select a region close to your location for better performance
+2. **Finding Access Credentials**:
+   - After project creation, go to Project Settings > API
+   - Copy the `URL` and `public anon key` into your `.env` file:
      ```env
      SUPABASE_URL="https://your-project-id.supabase.co"
      SUPABASE_KEY="your-public-anon-key"
      ```
-3. **Tabellenberechtigungen**:
-   - Stellen Sie sicher, dass der Service-Account (public anon key) Lese-/Schreibrechte für Ihre Tabelle hat
-   - Gehen Sie zu Authentication > Policies und erstellen Sie entsprechende Zugriffsregeln
+3. **Table Permissions**:
+   - Ensure the service account (public anon key) has read/write permissions for your table
+   - Go to Authentication > Policies and create appropriate access rules
 
-Weitere Details finden Sie in der [Supabase Dokumentation](https://supabase.com/docs).
+For more details, see the [Supabase Documentation](https://supabase.com/docs).
 
 #### Database Schema
 
