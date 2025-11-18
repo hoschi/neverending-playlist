@@ -156,12 +156,9 @@ async def test_sync_playlist_success_returns_200(
     from src.shell.api import app, get_spotify_client
 
     sync_result = SyncResult(
-        success_count=3,
-        failure_count=0,
         failures=[],
         successful=["1", "2", "3"],
         not_found=[],
-        errors=[],
     )
 
     # Override the dependency
@@ -190,12 +187,9 @@ async def test_sync_playlist_returns_207_on_partial_failure(
     from src.shell.api import app, get_spotify_client
 
     sync_result = SyncResult(
-        success_count=2,
-        failure_count=1,
         failures=[SyncFailure(song_id="123", reason="Timeout")],
         successful=["1", "2"],
         not_found=[],
-        errors=["3"],
     )
 
     # Override the dependency

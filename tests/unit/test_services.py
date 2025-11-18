@@ -133,8 +133,8 @@ async def test_sync_playlist_success_mixed_statuses() -> None:
     assert len(sync_result.not_found) == 1
     assert "2" in sync_result.not_found
 
-    assert len(sync_result.errors) == 1
-    assert "3" in sync_result.errors
+    assert len(sync_result.failures) == 1
+    assert sync_result.failures[0].song_id == "3"
 
     # Check that all requests were updated in Supabase
     assert len(supabase_mock.updated_requests) == 4
@@ -206,7 +206,7 @@ async def test_sync_playlist_no_pending_requests() -> None:
     assert isinstance(sync_result, SyncResult)
     assert len(sync_result.successful) == 0
     assert len(sync_result.not_found) == 0
-    assert len(sync_result.errors) == 0
+    assert len(sync_result.failures) == 0
     assert len(supabase_mock.updated_requests) == 0
     assert len(spotify_mock.added_songs) == 0
 

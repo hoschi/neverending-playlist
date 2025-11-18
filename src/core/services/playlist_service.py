@@ -84,7 +84,7 @@ async def sync_playlist(
     logger.debug("After unwrap: found {count} requests", count=len(requests))
     if not requests:
         logger.info("No pending requests found.")
-        return Success(SyncResult(success_count=0, failure_count=0, failures=[]))
+        return Success(SyncResult(failures=[], successful=[], not_found=[]))
 
     add_result = await add_songs_to_spotify(spotify_client, requests)
     if not is_successful(add_result):
