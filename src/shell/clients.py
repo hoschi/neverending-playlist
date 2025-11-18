@@ -83,9 +83,9 @@ class ConcreteSpotifyClient(SpotifyClient):
         decrypted_token = encryption_service.decrypt(settings.spotify_refresh_token)
 
         auth_manager = SpotifyOAuth(
-            client_id=settings.spotipy_client_id,
-            client_secret=settings.spotipy_client_secret,
-            redirect_uri=settings.spotipy_redirect_uri,
+            client_id=settings.spotify_client_id,
+            client_secret=settings.spotify_client_secret,
+            redirect_uri=settings.spotify_redirect_uri,
             scope="playlist-modify-public playlist-modify-private",
             cache_path=None,  # Do not use a cache file
         )

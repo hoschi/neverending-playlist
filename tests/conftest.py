@@ -37,9 +37,9 @@ def test_settings():
         supabase_url="https://test.supabase.co",
         supabase_key="test_key_12345",
         supabase_table="test_table",
-        spotipy_client_id="test_client_id_xyz",
-        spotipy_client_secret="test_client_secret_xyz",
-        spotipy_redirect_uri="http://localhost:8000/callback",
+        spotify_client_id="test_client_id_xyz",
+        spotify_client_secret="test_client_secret_xyz",
+        spotify_redirect_uri="http://localhost:8000/callback",
         spotify_playlist_id="test_playlist_id_abc",
         spotify_refresh_token="gAAAAABpGuFQSE4nvwWCmEg-S967b70jzXjyS_Av5Jv1ICRsOGD5vamBJmYhuDtFa67th0XLIjB18g4hXOvMACaPyfPHaewNupSX2X3lpbGL6wRCZbWj25g=",  # Properly encrypted token
         encryption_key="9S2NLcv8dcrVHBaQQsy_rYwVYvGVBDisBm-LjExK5vg=",  # 32-byte Base64

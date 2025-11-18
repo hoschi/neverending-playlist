@@ -17,9 +17,9 @@ class Settings(BaseSettings):
     supabase_table: str
 
     # Spotify
-    spotipy_client_id: str
-    spotipy_client_secret: str
-    spotipy_redirect_uri: str
+    spotify_client_id: str
+    spotify_client_secret: str
+    spotify_redirect_uri: str
     spotify_playlist_id: str
 
     # Spotify User Authorization

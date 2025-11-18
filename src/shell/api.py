@@ -36,9 +36,9 @@ def get_spotify_oauth() -> SpotifyOAuth:
     """FastAPI dependency provider for the SpotifyOAuth manager."""
     settings = get_settings()
     return SpotifyOAuth(
-        client_id=settings.spotipy_client_id,
-        client_secret=settings.spotipy_client_secret,
-        redirect_uri=settings.spotipy_redirect_uri,
+        client_id=settings.spotify_client_id,
+        client_secret=settings.spotify_client_secret,
+        redirect_uri=settings.spotify_redirect_uri,
         scope="playlist-modify-public playlist-modify-private",
     )
 
