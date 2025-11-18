@@ -42,7 +42,9 @@ async def add_songs_to_spotify(
 
     # Log individual song statuses
     song_statuses = result.unwrap()
-    logger.debug("Individual song statuses: {statuses}", statuses=song_statuses)
+    logger.debug(
+        "Individual song statuses fetched: {statuses}", statuses=len(song_statuses)
+    )
     successful_count = sum(
         1 for _, status in song_statuses if status.value == "SUCCESS"
     )
