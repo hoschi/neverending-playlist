@@ -33,3 +33,4 @@ ssl/
 .cache
 .claude_consciousness.m8
 .env.mine
+.roo/mcp.json
