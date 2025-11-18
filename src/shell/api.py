@@ -131,7 +131,8 @@ async def sync_playlist_endpoint(
 
     sync_result = result.unwrap()
 
-    if sync_result.failure_count > 0:
+    failure_count = len(sync_result.failures)
+    if failure_count > 0:
         return JSONResponse(
             status_code=status.HTTP_207_MULTI_STATUS,
             content={
@@ -149,7 +150,7 @@ async def sync_playlist_endpoint(
         content={
             "successful": sync_result.successful,
             "not_found": sync_result.not_found,
-            "errors": sync_result.errors,
+            "errors": [],
         },
     )
 

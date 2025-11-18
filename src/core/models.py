@@ -38,8 +38,6 @@ class SyncFailure(BaseModel):
 class SyncResult(BaseModel):
     """Represents the result of a playlist synchronization operation."""
 
-    success_count: int = Field(..., description="Number of successfully added songs.")
-    failure_count: int = Field(..., description="Number of failed songs.")
     failures: list[SyncFailure] = Field(
         default_factory=list, description="List of failures."
     )
@@ -48,9 +46,6 @@ class SyncResult(BaseModel):
     )
     not_found: list[str] = Field(
         default_factory=list, description="List of song IDs that were not found."
-    )
-    errors: list[str] = Field(
-        default_factory=list, description="List of song IDs with errors."
     )
 
 

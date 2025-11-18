@@ -132,20 +132,13 @@ async def sync_playlist(
     success_count = len(successful)
     successful_ids = [str(req.id) for req in successful]
     not_found_ids = [str(req.id) for req in not_found]
-    error_ids = [str(req.id) for req in errors]
-    failures = [
-        SyncFailure(song_id=str(req.id), reason="Not found") for req in not_found
-    ] + [SyncFailure(song_id=str(req.id), reason="Error") for req in errors]
-    failure_count = len(failures)
+    failures = [SyncFailure(song_id=str(req.id), reason="Error") for req in errors]
 
     logger.info("Playlist sync successful. Added {count} songs.", count=success_count)
     return Success(
         SyncResult(
-            success_count=success_count,
-            failure_count=failure_count,
             failures=failures,
             successful=successful_ids,
             not_found=not_found_ids,
-            errors=error_ids,
         )
     )
