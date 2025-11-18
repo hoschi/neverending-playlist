@@ -25,6 +25,7 @@ class ConcreteSupabaseClient(SupabaseClient):
         self, max_count: int
     ) -> Result[list[SongRequest], Exception]:
         try:
+            logger.debug(f"Fetching pending song requests with max_count: {max_count}")
             response = (
                 self.client.table(self.table_name)
                 .select("*")
@@ -40,6 +41,8 @@ class ConcreteSupabaseClient(SupabaseClient):
                 )
                 for item in response.data
             ]
+            ids = [sr.id for sr in song_requests]
+            logger.debug(f"Retrieved song request IDs: {ids}")
             return Success(song_requests)
         except Exception as e:
             return Result.from_failure(e)
@@ -48,6 +51,9 @@ class ConcreteSupabaseClient(SupabaseClient):
         self, song_requests: list[SongRequest]
     ) -> Result[None, Exception]:
         try:
+            ids = [sr.id for sr in song_requests]
+            statuses = [sr.status.value if sr.status else None for sr in song_requests]
+            logger.debug(f"Updating song requests: IDs {ids}, statuses {statuses}")
             # Update each song request individually with its specific status
             for song_request in song_requests:
                 # Update the database with the status
@@ -120,12 +126,16 @@ class ConcreteSpotifyClient(SpotifyClient):
             # Process each song individually
             for song in songs:
                 query = f"artist:{song.song.artist} track:{song.song.title}"
+                logger.trace(f"Searching for song with query: '{query}'")
                 try:
                     search_results = self.client.search(q=query, type="track", limit=1)
 
                     if search_results and search_results["tracks"]["items"]:
                         # Song found, add to playlist and mark as success
                         track_uri = search_results["tracks"]["items"][0]["uri"]
+                        logger.debug(
+                            f"Found track URI: '{track_uri}' for query '{query}'"
+                        )
                         self.client.playlist_add_items(
                             settings.spotify_playlist_id, [track_uri]
                         )
@@ -134,6 +144,7 @@ class ConcreteSpotifyClient(SpotifyClient):
                         results.append((song, SongAdditionStatus.SUCCESS))
                     else:
                         # Song not found
+                        logger.debug(f"No track found for query: '{query}'")
                         song.status = SongAdditionStatus.NOT_FOUND
                         results.append((song, SongAdditionStatus.NOT_FOUND))
 

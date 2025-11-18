@@ -18,7 +18,14 @@ async def fetch_pending_song_requests(
     logger.info(
         "Fetching up to {max_count} pending song requests.", max_count=max_count
     )
-    return await supabase_client.fetch_pending_song_requests(max_count)
+    result = await supabase_client.fetch_pending_song_requests(max_count)
+    if is_successful(result):
+        requests = result.unwrap()
+        logger.debug(
+            "Fetched {count} pending song requests",
+            count=len(requests),
+        )
+    return result
 
 
 async def add_songs_to_spotify(
@@ -35,6 +42,7 @@ async def add_songs_to_spotify(
 
     # Log individual song statuses
     song_statuses = result.unwrap()
+    logger.debug("Individual song statuses: {statuses}", statuses=song_statuses)
     successful_count = sum(
         1 for _, status in song_statuses if status.value == "SUCCESS"
     )
@@ -71,6 +79,7 @@ async def sync_playlist(
         return Result.from_failure(requests_result.failure())
 
     requests = requests_result.unwrap()
+    logger.debug("After unwrap: found {count} requests", count=len(requests))
     if not requests:
         logger.info("No pending requests found.")
         return Success(SyncResult(success_count=0, failure_count=0, failures=[]))
@@ -85,6 +94,10 @@ async def sync_playlist(
 
     # Extract song statuses from the add_result
     song_statuses = add_result.unwrap()
+    logger.debug(
+        "After unwrap add_result: song_statuses count = {count}",
+        count=len(song_statuses),
+    )
     # Extract only the SongRequest objects for the database update
     song_requests_only = [song_request for song_request, _ in song_statuses]
     update_result = await supabase_client.update_song_requests_as_added(
