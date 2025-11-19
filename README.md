@@ -5,6 +5,7 @@ This project provides a web service to synchronize song requests from a Supabase
 ## Features
 
 - **Playlist Synchronization**: A FastAPI endpoint (`POST /sync-playlist`) fetches pending song requests from a Supabase table, finds the corresponding tracks on Spotify, and adds them to a specified playlist. The `/sync-playlist` endpoint returns a comprehensive response with details about successful additions, not found tracks, and any errors encountered.
+- **Clear Played Tracks**: A new FastAPI endpoint (`POST /clear-played`) removes tracks from the beginning of a Spotify playlist that have already been played. This endpoint only works when music is actively playing from the configured playlist.
 - **Configurable**: All external service credentials and settings are managed via a `.env` file.
 - **Robust & Testable**: Built with a "Functional Core, Imperative Shell" architecture, ensuring the business logic is isolated and easily testable. It uses the `returns` library for explicit, railway-oriented error handling.
 
@@ -39,6 +40,61 @@ Synchronizes the playlist by fetching pending song requests from Supabase and ad
   "errors": ["Failed to add song ID 5: API rate limit exceeded"]
 }
 ```
+
+### POST /clear-played
+
+Removes tracks from the beginning of the configured playlist that have already been played. This operation is conditional and will only execute if music is actively playing from the correct playlist.
+
+**Response (200 OK):**
+```json
+{
+  "deleted_count": 5
+}
+```
+
+**Response Fields:**
+- `deleted_count`: Number of tracks successfully removed from the playlist.
+
+**Error Responses:**
+- **400 Bad Request**: Current track is not from the configured playlist
+  ```json
+  {
+    "detail": {
+      "error": "wrong_playlist",
+      "message": "The currently playing song is not from the configured playlist."
+    }
+  }
+  ```
+
+- **409 Conflict**: No active playback found
+  ```json
+  {
+    "detail": {
+      "error": "playback_inactive",
+      "message": "Cannot clear tracks when no music is playing."
+    }
+  }
+  ```
+
+- **500 Internal Server Error**: Unexpected API errors
+  ```json
+  {
+    "detail": {
+      "error": "internal_server_error",
+      "message": "An unexpected error occurred."
+    }
+  }
+  ```
+
+**Example Usage:**
+```bash
+curl -X POST "http://localhost:6361/clear-played"
+```
+
+**Requirements:**
+- Music must be actively playing from Spotify
+- The currently playing track must be from the configured playlist
+- OAuth authorization must be completed
 
 ## Project Setup
 

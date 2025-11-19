@@ -161,3 +161,52 @@ class ConcreteSpotifyClient(SpotifyClient):
         # can't recover from this error
         except Exception as e:
             return Result.from_failure(e)
+
+    async def get_current_playback(self) -> Result[dict | None, Exception]:  # type: ignore[type-arg]
+        """Get the current playback state from Spotify."""
+        try:
+            playback = self.client.current_playback()
+            return Success(playback)
+        except Exception as e:
+            return Result.from_failure(e)
+
+    async def get_playlist_items(
+        self, playlist_id: str
+    ) -> Result[list[dict], Exception]:  # type: ignore[type-arg]
+        """Get all items from a playlist."""
+        try:
+            items = []
+            offset = 0
+            limit = 100
+
+            while True:
+                response = self.client.playlist_items(
+                    playlist_id,
+                    limit=limit,
+                    offset=offset,
+                    fields="items(track(uri,name,artists(name))),total",
+                )
+
+                if not response or not response.get("items"):
+                    break
+
+                items.extend(response["items"])
+
+                if len(response["items"]) < limit:
+                    break
+
+                offset += limit
+
+            return Success(items)
+        except Exception as e:
+            return Result.from_failure(e)
+
+    async def remove_items_from_playlist(
+        self, playlist_id: str, uris: list[str]
+    ) -> Result[None, Exception]:
+        """Remove items from a playlist."""
+        try:
+            self.client.playlist_remove_all_occurrences_of_items(playlist_id, uris)
+            return Success(None)
+        except Exception as e:
+            return Result.from_failure(e)

@@ -1,10 +1,17 @@
 import pytest
 from returns.result import Failure, Result, Success
 
-from src.core.models import Song, SongAdditionStatus, SongRequest, SyncResult
+from src.core.models import (
+    PlaylistClearFailure,
+    Song,
+    SongAdditionStatus,
+    SongRequest,
+    SyncResult,
+)
 from src.core.protocols import SpotifyClient, SupabaseClient
 from src.core.services.playlist_service import (
     add_songs_to_spotify,
+    clear_played_tracks_from_playlist,
     fetch_pending_song_requests,
     sync_playlist,
 )
@@ -57,11 +64,17 @@ class MockSpotifyClient(SpotifyClient):
         should_fail: bool = False,
         song_statuses: list[tuple[SongRequest, SongAdditionStatus]] | None = None,
         get_current_user_should_fail: bool = False,
+        playback_info: dict | None = None,  # type: ignore[type-arg]
+        playlist_items: list[dict] | None = None,  # type: ignore[type-arg]
+        remove_should_fail: bool = False,
     ):
         self.added_songs: list[SongRequest] = []
         self.should_fail = should_fail
         self.song_statuses = song_statuses or []
         self.get_current_user_should_fail = get_current_user_should_fail
+        self.playback_info = playback_info
+        self.playlist_items = playlist_items or []
+        self.remove_should_fail = remove_should_fail
 
     async def get_current_user(self) -> Result[dict[str, str] | None, Exception]:
         if self.get_current_user_should_fail:
@@ -91,6 +104,28 @@ class MockSpotifyClient(SpotifyClient):
         for song in songs:
             song.status = SongAdditionStatus.SUCCESS
         return Success([(song, SongAdditionStatus.SUCCESS) for song in songs])
+
+    async def get_current_playback(self) -> Result[dict[str, object] | None, Exception]:
+        if self.should_fail:
+            return Failure(Exception("Spotify API failed"))
+        return Success(self.playback_info)
+
+    async def get_playlist_items(
+        self,
+        playlist_id: str,  # noqa: ARG002
+    ) -> Result[list[dict[str, object]], Exception]:
+        if self.should_fail:
+            return Failure(Exception("Spotify API failed"))
+        return Success(self.playlist_items)
+
+    async def remove_items_from_playlist(
+        self,
+        playlist_id: str,  # noqa: ARG002
+        uris: list[str],  # noqa: ARG002
+    ) -> Result[None, Exception]:
+        if self.remove_should_fail:
+            return Failure(Exception("Spotify API failed"))
+        return Success(None)
 
 
 @pytest.mark.asyncio
@@ -253,3 +288,212 @@ async def test_fetch_pending_song_requests_failure() -> None:
     # Assert
     assert isinstance(result, Failure)
     assert "Supabase fetch failed" in str(result.failure())
+
+
+# Clear Played Tracks Tests
+@pytest.mark.asyncio
+async def test_clear_played_tracks_success() -> None:
+    """Tests successful clearing of played tracks."""
+    # Arrange
+    config_playlist_id = "playlist123"
+
+    # Mock playback info with current track at position 2 (0-indexed)
+    current_track_uri = "spotify:track:track3"
+    playback_info = {
+        "item": {"uri": current_track_uri},
+        "context": {
+            "type": "playlist",
+            "uri": f"spotify:playlist:{config_playlist_id}",
+        },
+    }
+
+    # Mock playlist items with tracks before current position
+    playlist_items = [
+        {"track": {"uri": "spotify:track:track1"}},
+        {"track": {"uri": "spotify:track:track2"}},
+        {"track": {"uri": current_track_uri}},  # Currently playing
+        {"track": {"uri": "spotify:track:track4"}},
+    ]
+
+    spotify_mock = MockSpotifyClient(
+        playback_info=playback_info, playlist_items=playlist_items
+    )
+
+    # Act
+    result = await clear_played_tracks_from_playlist(spotify_mock, config_playlist_id)
+
+    # Assert
+    assert isinstance(result, Success)
+    assert result.unwrap() == 2  # 2 tracks should be removed
+
+
+@pytest.mark.asyncio
+async def test_clear_played_tracks_no_active_playback() -> None:
+    """Tests handling when there is no active playback."""
+    # Arrange
+    config_playlist_id = "playlist123"
+    spotify_mock = MockSpotifyClient(playback_info=None)
+
+    # Act
+    result = await clear_played_tracks_from_playlist(spotify_mock, config_playlist_id)
+
+    # Assert
+    assert isinstance(result, Failure)
+    assert result.failure() == PlaylistClearFailure.PLAYBACK_INACTIVE
+
+
+@pytest.mark.asyncio
+async def test_clear_played_tracks_wrong_playlist() -> None:
+    """Tests handling when playing from wrong playlist."""
+    # Arrange
+    config_playlist_id = "playlist123"
+    other_playlist_id = "playlist456"
+
+    playback_info = {
+        "item": {"uri": "spotify:track:track1"},
+        "context": {"type": "playlist", "uri": f"spotify:playlist:{other_playlist_id}"},
+    }
+
+    spotify_mock = MockSpotifyClient(playback_info=playback_info)
+
+    # Act
+    result = await clear_played_tracks_from_playlist(spotify_mock, config_playlist_id)
+
+    # Assert
+    assert isinstance(result, Failure)
+    assert result.failure() == PlaylistClearFailure.WRONG_PLAYLIST
+
+
+@pytest.mark.asyncio
+async def test_clear_played_tracks_no_context() -> None:
+    """Tests handling when playback has no context."""
+    # Arrange
+    config_playlist_id = "playlist123"
+
+    playback_info = {
+        "item": {"uri": "spotify:track:track1"}
+        # No context field
+    }
+
+    spotify_mock = MockSpotifyClient(playback_info=playback_info)
+
+    # Act
+    result = await clear_played_tracks_from_playlist(spotify_mock, config_playlist_id)
+
+    # Assert
+    assert isinstance(result, Failure)
+    assert result.failure() == PlaylistClearFailure.PLAYBACK_INACTIVE
+
+
+@pytest.mark.asyncio
+async def test_clear_played_tracks_no_current_track() -> None:
+    """Tests handling when playback has no current track."""
+    # Arrange
+    config_playlist_id = "playlist123"
+
+    playback_info = {
+        # No item field
+        "context": {"type": "playlist", "uri": f"spotify:playlist:{config_playlist_id}"}
+    }
+
+    spotify_mock = MockSpotifyClient(playback_info=playback_info)
+
+    # Act
+    result = await clear_played_tracks_from_playlist(spotify_mock, config_playlist_id)
+
+    # Assert
+    assert isinstance(result, Failure)
+    assert result.failure() == PlaylistClearFailure.PLAYBACK_INACTIVE
+
+
+@pytest.mark.asyncio
+async def test_clear_played_tracks_current_track_not_in_playlist() -> None:
+    """Tests handling when current track is not found in playlist."""
+    # Arrange
+    config_playlist_id = "playlist123"
+
+    playback_info = {
+        "item": {"uri": "spotify:track:current_track"},
+        "context": {
+            "type": "playlist",
+            "uri": f"spotify:playlist:{config_playlist_id}",
+        },
+    }
+
+    # Playlist doesn't contain the current track
+    playlist_items = [
+        {"track": {"uri": "spotify:track:track1"}},
+        {"track": {"uri": "spotify:track:track2"}},
+    ]
+
+    spotify_mock = MockSpotifyClient(
+        playback_info=playback_info, playlist_items=playlist_items
+    )
+
+    # Act
+    result = await clear_played_tracks_from_playlist(spotify_mock, config_playlist_id)
+
+    # Assert
+    assert isinstance(result, Failure)
+    assert result.failure() == PlaylistClearFailure.PLAYBACK_INACTIVE
+
+
+@pytest.mark.asyncio
+async def test_clear_played_tracks_no_tracks_to_remove() -> None:
+    """Tests when current track is at the beginning of playlist."""
+    # Arrange
+    config_playlist_id = "playlist123"
+
+    current_track_uri = "spotify:track:track1"
+    playback_info = {
+        "item": {"uri": current_track_uri},
+        "context": {
+            "type": "playlist",
+            "uri": f"spotify:playlist:{config_playlist_id}",
+        },
+    }
+
+    # Current track is the first one
+    playlist_items = [
+        {"track": {"uri": current_track_uri}},  # Currently playing (first)
+        {"track": {"uri": "spotify:track:track2"}},
+        {"track": {"uri": "spotify:track:track3"}},
+    ]
+
+    spotify_mock = MockSpotifyClient(
+        playback_info=playback_info, playlist_items=playlist_items
+    )
+
+    # Act
+    result = await clear_played_tracks_from_playlist(spotify_mock, config_playlist_id)
+
+    # Assert
+    assert isinstance(result, Success)
+    assert result.unwrap() == 0  # No tracks to remove
+
+
+@pytest.mark.asyncio
+async def test_clear_played_tracks_api_failure() -> None:
+    """Tests handling when Spotify API call fails."""
+    # Arrange
+    config_playlist_id = "playlist123"
+
+    playback_info = {
+        "item": {"uri": "spotify:track:track2"},
+        "context": {
+            "type": "playlist",
+            "uri": f"spotify:playlist:{config_playlist_id}",
+        },
+    }
+
+    spotify_mock = MockSpotifyClient(
+        playback_info=playback_info,
+        should_fail=True,  # This will cause API calls to fail
+    )
+
+    # Act
+    result = await clear_played_tracks_from_playlist(spotify_mock, config_playlist_id)
+
+    # Assert
+    assert isinstance(result, Failure)
+    assert result.failure() == PlaylistClearFailure.PLAYBACK_INACTIVE

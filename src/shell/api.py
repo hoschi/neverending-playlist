@@ -14,10 +14,17 @@ from returns.pipeline import is_successful
 from spotipy.oauth2 import SpotifyOAuth  # type: ignore
 
 from src.core.config import get_settings
-from src.core.models import UserAuthorization
+from src.core.models import (
+    ClearPlayedTracksResponse,
+    PlaylistClearFailure,
+    UserAuthorization,
+)
 from src.core.protocols import SpotifyClient, SupabaseClient
 from src.core.services.encryption_service import EncryptionService
-from src.core.services.playlist_service import sync_playlist
+from src.core.services.playlist_service import (
+    clear_played_tracks_from_playlist,
+    sync_playlist,
+)
 from src.shell.clients import ConcreteSpotifyClient, ConcreteSupabaseClient
 from src.shell.logging_config import setup_logging
 
@@ -153,6 +160,49 @@ async def sync_playlist_endpoint(
             "errors": [],
         },
     )
+
+
+@app.post("/clear-played")
+async def clear_played_endpoint(
+    spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
+) -> ClearPlayedTracksResponse:
+    """API endpoint to clear played tracks from the configured playlist."""
+    settings = get_settings()
+
+    result = await clear_played_tracks_from_playlist(
+        spotify_client, settings.spotify_playlist_id
+    )
+
+    if not is_successful(result):
+        failure = result.failure()
+
+        if failure == PlaylistClearFailure.PLAYBACK_INACTIVE:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error": "playback_inactive",
+                    "message": "Cannot clear tracks when no music is playing.",
+                },
+            )
+        elif failure == PlaylistClearFailure.WRONG_PLAYLIST:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "wrong_playlist",
+                    "message": "The currently playing song is not from the configured playlist.",
+                },
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error": "internal_server_error",
+                    "message": "An unexpected error occurred.",
+                },
+            )
+
+    deleted_count = result.unwrap()
+    return ClearPlayedTracksResponse(deleted_count=deleted_count)
 
 
 def main() -> None:  # pragma: no cover
