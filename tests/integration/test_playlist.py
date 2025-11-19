@@ -148,7 +148,8 @@ async def test_clear_played_playback_inactive(
     assert response.json() == {
         "detail": {
             "error": "playback_inactive",
-            "message": "Cannot clear tracks when no music is playing.",
+            "message": "No active playback found",
+            "details": "User is not currently playing any music",
         }
     }
 
@@ -187,7 +188,8 @@ async def test_clear_played_wrong_playlist(
     assert response.json() == {
         "detail": {
             "error": "wrong_playlist",
-            "message": "The currently playing song is not from the configured playlist.",
+            "message": "Current playlist does not match configured playlist",
+            "details": "Current: playlist456, Configured: 7AVVVQ6TJMTA17a2e6ncFr",
         }
     }
 
@@ -218,7 +220,8 @@ async def test_clear_played_api_error(
     assert response.json() == {
         "detail": {
             "error": "playback_inactive",
-            "message": "Cannot clear tracks when no music is playing.",
+            "message": "Playback is inactive or unavailable",
+            "details": "Failed to get current playback state from Spotify API",
         }
     }
 

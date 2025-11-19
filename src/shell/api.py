@@ -174,30 +174,43 @@ async def clear_played_endpoint(
     )
 
     if not is_successful(result):
-        failure = result.failure()
+        error = result.failure()
 
-        if failure == PlaylistClearFailure.PLAYBACK_INACTIVE:
+        if error.error_code == PlaylistClearFailure.PLAYBACK_INACTIVE:
             raise HTTPException(
                 status_code=409,
                 detail={
                     "error": "playback_inactive",
-                    "message": "Cannot clear tracks when no music is playing.",
+                    "message": error.message,
+                    "details": error.details,
                 },
             )
-        elif failure == PlaylistClearFailure.WRONG_PLAYLIST:
+        elif error.error_code == PlaylistClearFailure.WRONG_PLAYLIST:
             raise HTTPException(
                 status_code=400,
                 detail={
                     "error": "wrong_playlist",
-                    "message": "The currently playing song is not from the configured playlist.",
+                    "message": error.message,
+                    "details": error.details,
                 },
             )
-        else:
+        elif error.error_code == PlaylistClearFailure.ERROR:
             raise HTTPException(
                 status_code=500,
                 detail={
                     "error": "internal_server_error",
-                    "message": "An unexpected error occurred.",
+                    "message": error.message,
+                    "details": error.details,
+                },
+            )
+        else:
+            # Fallback for unknown error types
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error": "unknown_error",
+                    "message": "An unknown error occurred.",
+                    "details": str(error),
                 },
             )
 

@@ -2,6 +2,7 @@ import pytest
 from returns.result import Failure, Result, Success
 
 from src.core.models import (
+    PlaylistClearError,
     PlaylistClearFailure,
     Song,
     SongAdditionStatus,
@@ -339,7 +340,9 @@ async def test_clear_played_tracks_no_active_playback() -> None:
 
     # Assert
     assert isinstance(result, Failure)
-    assert result.failure() == PlaylistClearFailure.PLAYBACK_INACTIVE
+    failure = result.failure()
+    assert isinstance(failure, PlaylistClearError)
+    assert failure.error_code == PlaylistClearFailure.PLAYBACK_INACTIVE
 
 
 @pytest.mark.asyncio
@@ -361,7 +364,9 @@ async def test_clear_played_tracks_wrong_playlist() -> None:
 
     # Assert
     assert isinstance(result, Failure)
-    assert result.failure() == PlaylistClearFailure.WRONG_PLAYLIST
+    failure = result.failure()
+    assert isinstance(failure, PlaylistClearError)
+    assert failure.error_code == PlaylistClearFailure.WRONG_PLAYLIST
 
 
 @pytest.mark.asyncio
@@ -382,7 +387,9 @@ async def test_clear_played_tracks_no_context() -> None:
 
     # Assert
     assert isinstance(result, Failure)
-    assert result.failure() == PlaylistClearFailure.PLAYBACK_INACTIVE
+    failure = result.failure()
+    assert isinstance(failure, PlaylistClearError)
+    assert failure.error_code == PlaylistClearFailure.PLAYBACK_INACTIVE
 
 
 @pytest.mark.asyncio
@@ -403,7 +410,9 @@ async def test_clear_played_tracks_no_current_track() -> None:
 
     # Assert
     assert isinstance(result, Failure)
-    assert result.failure() == PlaylistClearFailure.PLAYBACK_INACTIVE
+    failure = result.failure()
+    assert isinstance(failure, PlaylistClearError)
+    assert failure.error_code == PlaylistClearFailure.PLAYBACK_INACTIVE
 
 
 @pytest.mark.asyncio
@@ -435,7 +444,9 @@ async def test_clear_played_tracks_current_track_not_in_playlist() -> None:
 
     # Assert
     assert isinstance(result, Failure)
-    assert result.failure() == PlaylistClearFailure.PLAYBACK_INACTIVE
+    failure = result.failure()
+    assert isinstance(failure, PlaylistClearError)
+    assert failure.error_code == PlaylistClearFailure.ERROR
 
 
 @pytest.mark.asyncio
@@ -496,4 +507,6 @@ async def test_clear_played_tracks_api_failure() -> None:
 
     # Assert
     assert isinstance(result, Failure)
-    assert result.failure() == PlaylistClearFailure.PLAYBACK_INACTIVE
+    failure = result.failure()
+    assert isinstance(failure, PlaylistClearError)
+    assert failure.error_code == PlaylistClearFailure.PLAYBACK_INACTIVE

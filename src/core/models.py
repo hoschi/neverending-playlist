@@ -82,6 +82,24 @@ class PlaylistClearFailure(str, Enum):
 
     PLAYBACK_INACTIVE = "PLAYBACK_INACTIVE"
     WRONG_PLAYLIST = "WRONG_PLAYLIST"
+    ERROR = "ERROR"
+
+
+class PlaylistClearError(BaseModel):
+    """Detaillierte Fehlerinformationen für Playlist-Clear-Operationen."""
+
+    error_code: PlaylistClearFailure = Field(
+        ...,
+        description="Der Fehlertyp für die Playlist-Clear-Operation.",
+    )
+    message: str = Field(
+        ...,
+        description="Eine benutzerfreundliche Fehlermeldung.",
+    )
+    details: str | None = Field(
+        default=None,
+        description="Zusätzliche technische Details zum Fehler.",
+    )
 
 
 class ClearPlayedTracksResponse(BaseModel):
