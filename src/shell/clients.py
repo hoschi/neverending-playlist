@@ -92,7 +92,7 @@ class ConcreteSpotifyClient(SpotifyClient):
             client_id=settings.spotify_client_id,
             client_secret=settings.spotify_client_secret,
             redirect_uri=settings.spotify_redirect_uri,
-            scope="playlist-modify-public playlist-modify-private",
+            scope="playlist-modify-public playlist-modify-private user-read-playback-state",
             cache_path=None,  # Do not use a cache file
         )
         # Manually prime the auth_manager with the refresh token

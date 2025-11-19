@@ -46,7 +46,7 @@ def get_spotify_oauth() -> SpotifyOAuth:
         client_id=settings.spotify_client_id,
         client_secret=settings.spotify_client_secret,
         redirect_uri=settings.spotify_redirect_uri,
-        scope="playlist-modify-public playlist-modify-private",
+        scope="playlist-modify-public playlist-modify-private user-read-playback-state",
     )
 
 
