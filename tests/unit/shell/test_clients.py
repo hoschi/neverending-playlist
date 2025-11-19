@@ -4,7 +4,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 from returns.result import Failure, Success
 
-from src.core.models import Song, SongAdditionStatus, SongRequest
+from src.core.models import (
+    Song,
+    SongAdditionStatus,
+    SongRequest,
+)
 from src.shell.clients import ConcreteSpotifyClient, ConcreteSupabaseClient
 
 
@@ -504,6 +508,322 @@ async def test_add_songs_to_playlist_malformed_search_results(
 
     # Verify playlist_add_items was not called
     mock_spotify_client.playlist_add_items.assert_not_called()
+
+
+# Tests for new methods in ConcreteSpotifyClient
+
+
+@pytest.mark.anyio
+async def test_get_current_playback_success(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test successful retrieval of current playback state."""
+    # Arrange
+    mock_playback_data = {
+        "device": {"id": "device123", "name": "Test Device"},
+        "is_playing": True,
+        "progress_ms": 120000,
+        "track": {"name": "Test Track", "artists": [{"name": "Test Artist"}]},
+    }
+    mock_spotify_client.current_playback.return_value = mock_playback_data
+
+    # Act
+    result = await concrete_spotify_client.get_current_playback()
+
+    # Assert
+    assert isinstance(result, Success)
+    assert result.unwrap() == mock_playback_data
+    mock_spotify_client.current_playback.assert_called_once()
+
+
+@pytest.mark.anyio
+async def test_get_current_playback_api_error(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test get_current_playback when Spotify API fails."""
+    # Arrange
+    mock_spotify_client.current_playback.side_effect = Exception("API Error")
+
+    # Act
+    result = await concrete_spotify_client.get_current_playback()
+
+    # Assert
+    assert isinstance(result, Failure)
+    assert isinstance(result.failure(), Exception)
+    assert str(result.failure()) == "API Error"
+    mock_spotify_client.current_playback.assert_called_once()
+
+
+@pytest.mark.anyio
+async def test_get_current_playback_no_playback(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test get_current_playback when no playback is active."""
+    # Arrange
+    mock_spotify_client.current_playback.return_value = None
+
+    # Act
+    result = await concrete_spotify_client.get_current_playback()
+
+    # Assert
+    assert isinstance(result, Success)
+    assert result.unwrap() is None
+    mock_spotify_client.current_playback.assert_called_once()
+
+
+@pytest.mark.anyio
+async def test_get_playlist_items_success(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test successful retrieval of playlist items."""
+    # Arrange
+    mock_playlist_id = "playlist123"
+    mock_items_batch1 = [
+        {
+            "track": {
+                "uri": "spotify:track:001",
+                "name": "Track 1",
+                "artists": [{"name": "Artist 1"}],
+            }
+        },
+        {
+            "track": {
+                "uri": "spotify:track:002",
+                "name": "Track 2",
+                "artists": [{"name": "Artist 2"}],
+            }
+        },
+    ]
+    mock_items_batch2 = [
+        {
+            "track": {
+                "uri": "spotify:track:003",
+                "name": "Track 3",
+                "artists": [{"name": "Artist 3"}],
+            }
+        },
+    ]
+
+    # Mock responses for pagination
+    # First call returns 2 items (less than limit of 100, so pagination stops)
+    mock_spotify_client.playlist_items.return_value = {
+        "items": mock_items_batch1 + mock_items_batch2,
+        "total": 3,
+    }
+
+    # Act
+    result = await concrete_spotify_client.get_playlist_items(mock_playlist_id)
+
+    # Assert
+    assert isinstance(result, Success)
+    items = result.unwrap()
+    assert len(items) == 3
+    assert items[0]["track"]["uri"] == "spotify:track:001"
+    assert items[1]["track"]["uri"] == "spotify:track:002"
+    assert items[2]["track"]["uri"] == "spotify:track:003"
+
+    # Verify API call was made with correct parameters
+    assert mock_spotify_client.playlist_items.call_count == 1
+    mock_spotify_client.playlist_items.assert_called_once_with(
+        mock_playlist_id,
+        limit=100,
+        offset=0,
+        fields="items(track(uri,name,artists(name))),total",
+    )
+
+
+@pytest.mark.anyio
+async def test_get_playlist_items_api_error(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test get_playlist_items when Spotify API fails."""
+    # Arrange
+    mock_playlist_id = "playlist123"
+    mock_spotify_client.playlist_items.side_effect = Exception("API Error")
+
+    # Act
+    result = await concrete_spotify_client.get_playlist_items(mock_playlist_id)
+
+    # Assert
+    assert isinstance(result, Failure)
+    assert isinstance(result.failure(), Exception)
+    assert str(result.failure()) == "API Error"
+    mock_spotify_client.playlist_items.assert_called_once_with(
+        mock_playlist_id,
+        limit=100,
+        offset=0,
+        fields="items(track(uri,name,artists(name))),total",
+    )
+
+
+@pytest.mark.anyio
+async def test_get_playlist_items_empty_playlist(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test get_playlist_items when playlist is empty."""
+    # Arrange
+    mock_playlist_id = "playlist123"
+    mock_spotify_client.playlist_items.return_value = {"items": [], "total": 0}
+
+    # Act
+    result = await concrete_spotify_client.get_playlist_items(mock_playlist_id)
+
+    # Assert
+    assert isinstance(result, Success)
+    items = result.unwrap()
+    assert len(items) == 0
+    mock_spotify_client.playlist_items.assert_called_once_with(
+        mock_playlist_id,
+        limit=100,
+        offset=0,
+        fields="items(track(uri,name,artists(name))),total",
+    )
+
+
+@pytest.mark.anyio
+async def test_remove_items_from_playlist_success(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test successful removal of items from playlist."""
+    # Arrange
+    mock_playlist_id = "playlist123"
+    uris: list[str] = ["spotify:track:001", "spotify:track:002", "spotify:track:003"]
+
+    # Act
+    result = await concrete_spotify_client.remove_items_from_playlist(
+        mock_playlist_id, uris
+    )
+
+    # Assert
+    assert isinstance(result, Success)
+    assert result.unwrap() is None
+
+    # Verify Spotify API calls
+    assert mock_spotify_client.playlist_remove_all_occurrences_of_items.call_count == 1
+    mock_spotify_client.playlist_remove_all_occurrences_of_items.assert_called_once_with(
+        mock_playlist_id, uris
+    )
+
+
+@pytest.mark.anyio
+async def test_remove_items_from_playlist_large_batch(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test removal of items from playlist with batch size exceeding 100."""
+    # Arrange
+    mock_playlist_id = "playlist123"
+    # Create 250 URIs to test batching
+    uris: list[str] = [f"spotify:track:{i:03d}" for i in range(250)]
+
+    # Act
+    result = await concrete_spotify_client.remove_items_from_playlist(
+        mock_playlist_id, uris
+    )
+
+    # Assert
+    assert isinstance(result, Success)
+    assert result.unwrap() is None
+
+    # Should be called 3 times: 100 + 100 + 50
+    assert mock_spotify_client.playlist_remove_all_occurrences_of_items.call_count == 3
+
+    # Verify batch calls
+    expected_calls = [
+        ((mock_playlist_id, uris[0:100]),),  # First 100
+        ((mock_playlist_id, uris[100:200]),),  # Second 100
+        ((mock_playlist_id, uris[200:250]),),  # Last 50
+    ]
+
+    actual_calls = (
+        mock_spotify_client.playlist_remove_all_occurrences_of_items.call_args_list
+    )
+    for _i, (expected_call, actual_call) in enumerate(
+        zip(expected_calls, actual_calls, strict=False)
+    ):
+        assert actual_call == expected_call
+
+
+@pytest.mark.anyio
+async def test_remove_items_from_playlist_api_error(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test remove_items_from_playlist when Spotify API fails."""
+    # Arrange
+    mock_playlist_id = "playlist123"
+    uris: list[str] = ["spotify:track:001"]
+    mock_spotify_client.playlist_remove_all_occurrences_of_items.side_effect = (
+        Exception("API Error")
+    )
+
+    # Act
+    result = await concrete_spotify_client.remove_items_from_playlist(
+        mock_playlist_id, uris
+    )
+
+    # Assert
+    assert isinstance(result, Failure)
+    assert isinstance(result.failure(), Exception)
+    assert str(result.failure()) == "API Error"
+    mock_spotify_client.playlist_remove_all_occurrences_of_items.assert_called_once_with(
+        mock_playlist_id, uris
+    )
+
+
+@pytest.mark.anyio
+async def test_remove_items_from_playlist_empty_uris(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test removal with empty URI list."""
+    # Arrange
+    mock_playlist_id = "playlist123"
+    uris: list[str] = []
+
+    # Act
+    result = await concrete_spotify_client.remove_items_from_playlist(
+        mock_playlist_id, uris
+    )
+
+    # Assert
+    assert isinstance(result, Success)
+    assert result.unwrap() is None
+    # Should not call the API with empty list
+    mock_spotify_client.playlist_remove_all_occurrences_of_items.assert_not_called()
+
+
+@pytest.mark.anyio
+async def test_remove_items_from_playlist_single_batch(
+    concrete_spotify_client: ConcreteSpotifyClient,
+    mock_spotify_client: MagicMock,
+) -> None:
+    """Test removal with exactly 100 URIs (single batch)."""
+    # Arrange
+    mock_playlist_id = "playlist123"
+    uris: list[str] = [f"spotify:track:{i:03d}" for i in range(100)]
+
+    # Act
+    result = await concrete_spotify_client.remove_items_from_playlist(
+        mock_playlist_id, uris
+    )
+
+    # Assert
+    assert isinstance(result, Success)
+    assert result.unwrap() is None
+
+    # Should be called only once
+    assert mock_spotify_client.playlist_remove_all_occurrences_of_items.call_count == 1
+    mock_spotify_client.playlist_remove_all_occurrences_of_items.assert_called_once_with(
+        mock_playlist_id, uris
+    )
 
 
 @pytest.mark.anyio
