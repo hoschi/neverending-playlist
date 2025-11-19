@@ -1,0 +1,64 @@
+openapi: 3.0.0
+info:
+  title: Supabase to Spotify API
+  version: 1.0.0
+paths:
+  /clear-played:
+    post:
+      summary: Clear Played Tracks
+      description: |
+        Removes all tracks from the configured playlist that appear before the currently playing track.
+        This operation is conditional and will only execute if music is actively playing from the correct playlist.
+      tags:
+        - Playlist
+      responses:
+        '200':
+          description: Tracks successfully cleared.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted_count:
+                    type: integer
+                    description: The number of tracks removed from the playlist.
+                    example: 5
+        '400':
+          description: Bad Request - The currently playing track is not from the configured playlist.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "wrong_playlist"
+                  message:
+                    type: string
+                    example: "The currently playing song is not from the configured playlist."
+        '409':
+          description: Conflict - Playback is not active.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "playback_inactive"
+                  message:
+                    type: string
+                    example: "Cannot clear tracks when no music is playing."
+        '500':
+          description: Internal Server Error - An unexpected error occurred.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "internal_server_error"
+                  message:
+                    type: string
+                    example: "An unexpected error occurred."

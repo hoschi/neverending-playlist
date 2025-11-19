@@ -34,7 +34,7 @@ As a user, I want to remove all tracks from my playlist that have already been p
 - **FR-001**: The system MUST provide a dedicated API endpoint to remove all tracks from a user's playlist that appear before the currently playing track.
 - **FR-002**: The track removal operation MUST only be executed if there is a track actively playing for the user.
 - **FR-003**: If no track is actively playing, the endpoint MUST NOT perform any modification on the playlist.
-- **FR-004**: The system MUST be able to reliably identify the user's currently playing track to use as a reference for the deletion.
+- **FR-004**: The system MUST be able to reliably identify the user's currently playing track within the *configured playlist* and use its position as a reference for deleting preceding tracks. This process **MUST NOT** rely on the user's 'recently played' history from Spotify. The order of tracks for deletion is strictly based on their sequence in the playlist.
 - **FR-005**: Upon successful removal of tracks, the endpoint MUST return a success confirmation.
 - **FR-006**: When no track is playing, the endpoint MUST return a `409 Conflict` HTTP status code with a JSON body containing `{"error": "playback_inactive", "message": "Cannot clear tracks when no music is playing."}`.
 
