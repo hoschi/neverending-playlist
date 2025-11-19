@@ -17,7 +17,7 @@ class MockSpotifyOAuth(SpotifyOAuth):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.auth_url = "https://accounts.spotify.com/authorize?mock_params"
-        self.token_info = {
+        self.token_info: dict[str, str | int] = {
             "access_token": "mock_access_token",
             "refresh_token": "mock_refresh_token",
             "expires_at": 9999999999,
@@ -27,7 +27,14 @@ class MockSpotifyOAuth(SpotifyOAuth):
     def get_authorize_url(self, *_args, **_kwargs) -> str:
         return self.auth_url
 
-    def get_access_token(self, _code: str, **_kwargs) -> dict | None:
+    def get_access_token(
+        self,
+        code: str | None = None,  # noqa: ARG002 - unused in mock
+        as_dict: bool = True,  # noqa: ARG002 - unused in mock
+        check_cache: bool = True,  # noqa: ARG002 - unused in mock
+    ) -> dict[str, str | int]:
+        """Override base method to return mock token info."""
+        # For mocking purposes, we ignore the parameters and always return token_info
         return self.token_info
 
 
@@ -106,18 +113,20 @@ async def test_callback_handles_general_exception(
 ) -> None:
     """Test that GET /callback returns a 500 error on unexpected failure."""
     # Arrange
-    mock_oauth_manager.get_access_token = MagicMock(
-        side_effect=Exception("A wild error appears!")
-    )
     app.dependency_overrides[get_spotify_oauth] = lambda: mock_oauth_manager
     app.dependency_overrides[get_encryption_service] = lambda: mock_encryption_service
     auth_code = "test_auth_code"
 
     # Act
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        response: Response = await client.get(f"/callback?code={auth_code}")
+    with patch.object(
+        mock_oauth_manager,
+        "get_access_token",
+        side_effect=Exception("A wild error appears!"),
+    ):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response: Response = await client.get(f"/callback?code={auth_code}")
 
     # Assert
     assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR

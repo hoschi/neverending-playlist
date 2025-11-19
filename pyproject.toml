@@ -104,7 +104,23 @@ check_untyped_defs = true
 disallow_untyped_decorators = true
 strict = true
 show_error_codes = true
-files = ["src/"]
+files = ["src/", "tests/"]
+
+# Gelockerte Einstellungen für Tests
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = true
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+disallow_incomplete_defs = false
+# Deaktiviere spotipy-bezogene Fehler
+disable_error_code = ["import-untyped", "misc"]
+
+# Ignoriere spotipy vollständig (für Imports von außerhalb tests)
+[[tool.mypy.overrides]]
+module = ["spotipy", "spotipy.*"]
+ignore_errors = true
 
 [tool.basedpyright]
 include = ["src", "tests"]

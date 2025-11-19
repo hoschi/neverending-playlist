@@ -7,3 +7,10 @@
   - *Zweck:* Um die Robustheit über tausende von Fällen zu beweisen, nicht nur Einzelfälle.
 - **Mocking:** Verwende **IMMER** Test-Doubles, die dem `Protocol` der Abhängigkeit entsprechen. Nutze keine Magie-Mocks ohne Spezifikation.
   - *Zweck:* Um sicherzustellen, dass Mocks und echter Code synchron bleiben.
+- **Coverage:** Die Code Abdeckung kann nur analysiert werden wenn `pytest` ohne Pfadangabe einer Testdatei verwendet wird! Generell ist es immer besser `pytest` zu verwenden ohne einen spezifische Testdatei um eine fehlerfreie Ausführung zu garantieren.
+- **Pydantic Models:** Müssen nur getestet werden wenn Logik existiert die getestet werden kann. Modelle die mit standard `Field` Instanzen beschrieben werden, müssen nicht getestet werden. Wir wollen ja nicht testen ob Pydantic funktioniert, wir wollen nur testen ob unsere Logik die wir schreiben funktioniert.
+- **Test Driven Development:** Wenn tests existieren zu der vorliegenden Aufgabe ändere diese zu erst und danach die Implementierung um sicher zu gehen das die Tests auch korrekt funktionieren. Durch die fehlende Implementierung müssten die Tests fehlschlagen. Wenn sie das nicht tun analysiere wieso das so ist und ob hier etwas im Test fehlt. Wenn die Aufgabe komplex ist oder noch keine Tests existieren für die vorliegende Aufgabe schreibe erst die Implementierung und danach den Test.
+
+## Projektspezifisch
+
+- in der CI Umgebung ist keine `.env` Datei vorhanden. Deswegen existiert eine `.env.test` env Datei die mit absicht keine normalen Werte enthält. Schlägt ein Test fehl weil er diese Datei benutzt, stimmt etwas mit dem Mocking nicht, da Mocks installiert werden müssen für die Code Teile die die `.env` Daten benötigen wie der Spotipy Client zum Beispiel. Dieser wird immer gemockt weil er eben nicht erstellt werden kann ohne valide `.env` Datei.

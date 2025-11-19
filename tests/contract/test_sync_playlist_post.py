@@ -26,9 +26,12 @@ async def test_sync_playlist_success() -> None:
     # Assert
     assert response.status_code == 200
     response_data = response.json()
-    assert response_data["status"] == "success"
-    assert "songs_added" in response_data
-    assert isinstance(response_data["songs_added"], int)
+    assert "successful" in response_data
+    assert "not_found" in response_data
+    assert "errors" in response_data
+    assert isinstance(response_data["successful"], list)
+    assert isinstance(response_data["not_found"], list)
+    assert isinstance(response_data["errors"], list)
 
     # Teardown
     app.dependency_overrides = {}

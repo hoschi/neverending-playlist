@@ -1,0 +1,41 @@
+openapi: 3.0.0
+info:
+  title: Spotify Playlist Sync API
+  version: 1.0.0
+paths:
+  /sync-playlist:
+    post:
+      summary: Sync a playlist with songs from the database
+      responses:
+        '200':
+          description: Songs processed successfully (may include songs not found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncPlaylistResponse'
+        '400':
+          description: An error occurred while processing one or more songs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncPlaylistResponse'
+components:
+  schemas:
+    SyncPlaylistResponse:
+      type: object
+      properties:
+        successful:
+          type: array
+          items:
+            type: string
+            example: "Queen - Bohemian Rhapsody"
+        not_found:
+          type: array
+          items:
+            type: string
+            example: "No One - Non Existent Song"
+        errors:
+          type: array
+          items:
+            type: string
+            example: "Some Artist - Another Song"

@@ -2,7 +2,7 @@ from typing import Protocol, runtime_checkable
 
 from returns.result import Result
 
-from src.core.models import SongRequest
+from src.core.models import SongAdditionStatus, SongRequest
 
 
 @runtime_checkable
@@ -22,6 +22,8 @@ class SupabaseClient(Protocol):
 class SpotifyClient(Protocol):
     """Protocol for interacting with the Spotify API."""
 
+    async def get_current_user(self) -> Result[dict[str, str] | None, Exception]: ...
+
     async def add_songs_to_playlist(
         self, songs: list[SongRequest]
-    ) -> Result[None, Exception]: ...
+    ) -> Result[list[tuple[SongRequest, SongAdditionStatus]], Exception]: ...

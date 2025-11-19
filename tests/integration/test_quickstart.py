@@ -11,12 +11,8 @@ async def test_quickstart_workflow() -> None:
     """Integration test for the main playlist synchronization workflow."""
     # Arrange
     requests = [
-        SongRequest(
-            id=1, song=Song(artist="Artist 1", title="Title 1"), requested_by="User 1"
-        ),
-        SongRequest(
-            id=2, song=Song(artist="Artist 2", title="Title 2"), requested_by="User 2"
-        ),
+        SongRequest(id=1, song=Song(artist="Artist 1", title="Title 1")),
+        SongRequest(id=2, song=Song(artist="Artist 2", title="Title 2")),
     ]
     supabase_mock = MockSupabaseClient(pending_requests=requests)
     spotify_mock = MockSpotifyClient()
@@ -35,8 +31,9 @@ async def test_quickstart_workflow() -> None:
     # Assert
     assert response.status_code == 200
     response_data = response.json()
-    assert response_data["status"] == "success"
-    assert response_data["songs_added"] == 2
+    assert response_data["successful"] == ["1", "2"]
+    assert response_data["not_found"] == []
+    assert response_data["errors"] == []
     assert len(supabase_mock.updated_requests) == 2
     assert len(spotify_mock.added_songs) == 2
 

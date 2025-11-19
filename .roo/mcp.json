@@ -1,0 +1,1 @@
+{"mcpServers":{"git":{"command":"uvx","args":["mcp-server-git","--repository","/Users/hoschi/repos/supabase-to-spotify"],"alwaysAllow":["git_status","git_diff_unstaged","git_diff_staged","git_diff","git_log","git_show"]}}}

@@ -22,7 +22,7 @@ This guide provides step-by-step instructions to set up and run the Supabase-Spo
     - `artist` (text)
     - `title` (text)
     - `requested_by` (text)
-    - `is_added` (boolean, default: `false`)
+    - `added_to_spotify` (boolean, default: `false`)
 
 ## 3. Running the Service
 To start the web service, run the following command from the project root:
@@ -49,4 +49,4 @@ A successful response will look like this:
 
 ## 5. Verifying the Results
 - **Check your Spotify playlist**: The new songs should appear in the playlist you specified.
-- **Check your Supabase table**: The `is_added` column for the synchronized songs should now be set to `true`.
+- **Check your Supabase table**: The `added_to_spotify` column for the synchronized songs should now be set to `true`.

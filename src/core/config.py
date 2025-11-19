@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from typing import ClassVar
 
@@ -13,11 +14,12 @@ class Settings(BaseSettings):
     # Supabase
     supabase_url: str
     supabase_key: str
+    supabase_table: str
 
     # Spotify
-    spotipy_client_id: str
-    spotipy_client_secret: str
-    spotipy_redirect_uri: str
+    spotify_client_id: str
+    spotify_client_secret: str
+    spotify_redirect_uri: str
     spotify_playlist_id: str
 
     # Spotify User Authorization
@@ -26,8 +28,14 @@ class Settings(BaseSettings):
     # Encryption
     encryption_key: str
 
+    # SSL
+    ssl_cert_path: str = "ssl/cert.pem"
+    ssl_key_path: str = "ssl/key.pem"
+
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=".env.test" if os.getenv("TESTING") == "true" else ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
 

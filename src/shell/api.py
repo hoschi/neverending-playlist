@@ -1,3 +1,4 @@
+import ssl
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -5,8 +6,8 @@ from typing import Annotated
 import spotipy  # type: ignore
 import uvicorn
 from dotenv import set_key
-from fastapi import Depends, FastAPI, HTTPException, Query
-from fastapi.responses import RedirectResponse
+from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
+from fastapi.responses import JSONResponse, RedirectResponse
 from loguru import logger
 from pydantic import SecretStr
 from returns.pipeline import is_successful
@@ -35,9 +36,9 @@ def get_spotify_oauth() -> SpotifyOAuth:
     """FastAPI dependency provider for the SpotifyOAuth manager."""
     settings = get_settings()
     return SpotifyOAuth(
-        client_id=settings.spotipy_client_id,
-        client_secret=settings.spotipy_client_secret,
-        redirect_uri=settings.spotipy_redirect_uri,
+        client_id=settings.spotify_client_id,
+        client_secret=settings.spotify_client_secret,
+        redirect_uri=settings.spotify_redirect_uri,
         scope="playlist-modify-public playlist-modify-private",
     )
 
@@ -86,7 +87,13 @@ def callback(
 
         # Create a temporary client to get the user's ID
         temp_client = spotipy.Spotify(auth=token_info["access_token"])
-        user_id = temp_client.current_user()["id"]
+        current_user = temp_client.current_user()
+        if current_user is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to retrieve user information from Spotify.",
+            )
+        user_id = current_user["id"]
 
         auth_data = UserAuthorization(
             spotify_user_id=user_id,
@@ -115,19 +122,53 @@ async def sync_playlist_endpoint(
     supabase_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
     max_count: int = Query(10, gt=0, le=50),
-) -> dict[str, str | int]:
+) -> Response:
     """API endpoint to synchronize the playlist."""
     result = await sync_playlist(supabase_client, spotify_client, max_count)
 
     if not is_successful(result):
         raise HTTPException(status_code=500, detail=str(result.failure()))
 
-    return {"status": "success", "songs_added": result.unwrap()}
+    sync_result = result.unwrap()
+
+    failure_count = len(sync_result.failures)
+    if failure_count > 0:
+        return JSONResponse(
+            status_code=status.HTTP_207_MULTI_STATUS,
+            content={
+                "successful": sync_result.successful,
+                "not_found": sync_result.not_found,
+                "errors": [
+                    f"{failure.song_id}: {failure.reason}"
+                    for failure in sync_result.failures
+                ],
+            },
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "successful": sync_result.successful,
+            "not_found": sync_result.not_found,
+            "errors": [],
+        },
+    )
 
 
 def main() -> None:  # pragma: no cover
     """Main function to run the FastAPI application."""
-    uvicorn.run(app, host="0.0.0.0", port=6361)
+    settings = get_settings()
+    # Create SSL context
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    print("STARTING with main config")
+    ssl_context.load_cert_chain(settings.ssl_cert_path, settings.ssl_key_path)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=6361,
+        ssl_certfile=settings.ssl_cert_path,
+        ssl_keyfile=settings.ssl_key_path,
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover
