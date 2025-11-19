@@ -169,9 +169,20 @@ async def clear_played_endpoint(
     """API endpoint to clear played tracks from the configured playlist."""
     settings = get_settings()
 
-    result = await clear_played_tracks_from_playlist(
-        spotify_client, settings.spotify_playlist_id
-    )
+    try:
+        result = await clear_played_tracks_from_playlist(
+            spotify_client, settings.spotify_playlist_id
+        )
+    except Exception as e:
+        # Fallback for unknown error types
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "unknown_error",
+                "message": "An unknown error occurred.",
+                "details": str(e),
+            },
+        ) from e
 
     if not is_successful(result):
         error = result.failure()
@@ -201,16 +212,6 @@ async def clear_played_endpoint(
                     "error": "internal_server_error",
                     "message": error.message,
                     "details": error.details,
-                },
-            )
-        else:
-            # Fallback for unknown error types
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "error": "unknown_error",
-                    "message": "An unknown error occurred.",
-                    "details": str(error),
                 },
             )
 
