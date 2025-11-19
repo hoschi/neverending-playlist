@@ -204,9 +204,24 @@ class ConcreteSpotifyClient(SpotifyClient):
     async def remove_items_from_playlist(
         self, playlist_id: str, uris: list[str]
     ) -> Result[None, Exception]:
-        """Remove items from a playlist."""
+        """Remove items from a playlist.
+
+        Args:
+            playlist_id: The ID of the playlist to remove items from
+            uris: List of track URIs to remove
+
+        Note:
+            Spotify Web API allows maximum 100 objects per DELETE request.
+            Reference: https://developer.spotify.com/documentation/web-api/reference/remove-tracks-playlist
+        """
         try:
-            self.client.playlist_remove_all_occurrences_of_items(playlist_id, uris)
+            # Spotify API limit: maximum 100 objects per delete request
+            batch_size = 100
+
+            for i in range(0, len(uris), batch_size):
+                batch = uris[i : i + batch_size]
+                self.client.playlist_remove_all_occurrences_of_items(playlist_id, batch)
+
             return Success(None)
         except Exception as e:
             return Result.from_failure(e)
