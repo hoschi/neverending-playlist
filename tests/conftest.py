@@ -1,4 +1,3 @@
-import os
 from unittest.mock import patch
 
 import pytest
@@ -15,19 +14,47 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
+@pytest.fixture(autouse=True)
+def mock_environment():
+    """Automatisch Mock-Environment für alle Tests."""
+    # Cache vor dem Test leeren
+    from src.core.config import get_settings
+
+    get_settings.cache_clear()
+
+    # Mock Settings definieren
+    test_settings = Settings(
+        supabase_url="https://test.supabase.co",
+        supabase_key="test_key_12345",
+        supabase_table="test_table",
+        spotify_client_id="test_client_id_xyz",
+        spotify_client_secret="test_client_secret_xyz",
+        spotify_redirect_uri="http://localhost:8000/callback",
+        spotify_playlist_id="7AVVVQ6TJMTA17a2e6ncFr",  # Fixed: Match test expectations
+        spotify_refresh_token="gAAAAABpGuFQSE4nvwWCmEg-S967b70jzXjyS_Av5Jv1ICRsOGD5vamBJmYhuDtFa67th0XLIjB18g4hXOvMACaPyfPHaewNupSX2X3lpbGL6wRCZbWj25g=",  # Properly encrypted token
+        playlist_autofill_count=150,  # Enable autofill for tests
+        encryption_key="9S2NLcv8dcrVHBaQQsy_rYwVYvGVBDisBm-LjExK5vg=",  # 32-byte Base64
+        log_level="DEBUG",
+        log_to_file=False,
+        ssl_cert_path="ssl-test/cert.pem",
+        ssl_key_path="ssl-test/key.pem",
+    )
+
+    # Settings und get_settings mocken
+    with (
+        patch("src.core.config.Settings", return_value=test_settings),
+        patch("src.core.config.get_settings", return_value=test_settings),
+    ):
+        yield test_settings
+
+    # Cleanup nach dem Test
+    get_settings.cache_clear()
+
+
 @pytest.fixture
-def client(mock_settings):  # noqa: ARG001
+def client(mock_environment):  # noqa: ARG001
     """Provides a TestClient for testing FastAPI endpoints."""
     return TestClient(app)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def enable_testing_mode():
-    """Aktiviert den Testing-Modus für die gesamte Test-Session"""
-    os.environ["TESTING"] = "true"
-    yield
-    if "TESTING" in os.environ:
-        del os.environ["TESTING"]
 
 
 @pytest.fixture
@@ -40,9 +67,31 @@ def test_settings():
         spotify_client_id="test_client_id_xyz",
         spotify_client_secret="test_client_secret_xyz",
         spotify_redirect_uri="http://localhost:8000/callback",
-        spotify_playlist_id="test_playlist_id_abc",
+        spotify_playlist_id="7AVVVQ6TJMTA17a2e6ncFr",  # Fixed: Match test expectations
         spotify_refresh_token="gAAAAABpGuFQSE4nvwWCmEg-S967b70jzXjyS_Av5Jv1ICRsOGD5vamBJmYhuDtFa67th0XLIjB18g4hXOvMACaPyfPHaewNupSX2X3lpbGL6wRCZbWj25g=",  # Properly encrypted token
+        playlist_autofill_count=150,  # Enable autofill for tests
         encryption_key="9S2NLcv8dcrVHBaQQsy_rYwVYvGVBDisBm-LjExK5vg=",  # 32-byte Base64
+        log_level="DEBUG",
+        log_to_file=False,
+        ssl_cert_path="ssl-test/cert.pem",
+        ssl_key_path="ssl-test/key.pem",
+    )
+
+
+@pytest.fixture
+def mock_settings_no_autofill():
+    """Mock Settings ohne Autofill für Tests die Edge-Cases prüfen"""
+    return Settings(
+        supabase_url="https://test.supabase.co",
+        supabase_key="test_key_12345",
+        supabase_table="test_table",
+        spotify_client_id="test_client_id_xyz",
+        spotify_client_secret="test_client_secret_xyz",
+        spotify_redirect_uri="http://localhost:8000/callback",
+        spotify_playlist_id="7AVVVQ6TJMTA17a2e6ncFr",
+        spotify_refresh_token="gAAAAABpGuFQSE4nvwWCmEg-S967b70jzXjyS_Av5Jv1ICRsOGD5vamBJmYhuDtFa67th0XLIjB18g4hXOvMACaPyfPHaewNupSX2X3lpbGL6wRCZbWj25g=",
+        playlist_autofill_count=None,  # Disabled autofill
+        encryption_key="9S2NLcv8dcrVHBaQQsy_rYwVYvGVBDisBm-LjExK5vg=",
         log_level="DEBUG",
         log_to_file=False,
         ssl_cert_path="ssl-test/cert.pem",

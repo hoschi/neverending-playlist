@@ -15,7 +15,6 @@ from spotipy.oauth2 import SpotifyOAuth  # type: ignore
 
 from src.core.config import get_settings
 from src.core.models import (
-    ClearPlayedTracksResponse,
     PlaylistClearFailure,
     UserAuthorization,
 )
@@ -164,14 +163,18 @@ async def sync_playlist_endpoint(
 
 @app.post("/clear-played")
 async def clear_played_endpoint(
+    supabase_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
-) -> ClearPlayedTracksResponse:
+) -> Response:
     """API endpoint to clear played tracks from the configured playlist."""
     settings = get_settings()
 
     try:
         result = await clear_played_tracks_from_playlist(
-            spotify_client, settings.spotify_playlist_id
+            spotify_client,
+            supabase_client,
+            settings.spotify_playlist_id,
+            settings.playlist_autofill_count,
         )
     except Exception as e:
         # Fallback for unknown error types
@@ -215,8 +218,28 @@ async def clear_played_endpoint(
                 },
             )
 
-    deleted_count = result.unwrap()
-    return ClearPlayedTracksResponse(deleted_count=deleted_count)
+    result_data = result.unwrap()
+    deleted_count = result_data["deleted_count"]
+    filled_count = result_data.get("filled_count", 0)
+
+    # Return 207 status code if something was deleted but not enough songs available for autofill
+    if deleted_count > 0 and filled_count == 0:
+        return JSONResponse(
+            status_code=status.HTTP_207_MULTI_STATUS,
+            content={
+                "deleted_count": deleted_count,
+                "filled_count": filled_count,
+                "message": "Partial success: Not enough songs available in Supabase to autofill the playlist",
+            },
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "deleted_count": deleted_count,
+            "filled_count": filled_count,
+        },
+    )
 
 
 def main() -> None:  # pragma: no cover

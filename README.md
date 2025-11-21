@@ -5,7 +5,7 @@ This project provides a web service to synchronize song requests from a Supabase
 ## Features
 
 - **Playlist Synchronization**: A FastAPI endpoint (`POST /sync-playlist`) fetches pending song requests from a Supabase table, finds the corresponding tracks on Spotify, and adds them to a specified playlist. The `/sync-playlist` endpoint returns a comprehensive response with details about successful additions, not found tracks, and any errors encountered.
-- **Clear Played Tracks**: A new FastAPI endpoint (`POST /clear-played`) removes tracks from the beginning of a Spotify playlist that have already been played. This endpoint only works when music is actively playing from the configured playlist.
+- **Clear Played Tracks with Autofill**: A FastAPI endpoint (`POST /clear-played`) removes tracks from the beginning of a Spotify playlist that have already been played. This endpoint only works when music is actively playing from the configured playlist. Optionally configure automatic playlist refilling via `PLAYLIST_AUTOFILL_COUNT` to maintain a constant number of tracks after clearing.
 - **Configurable**: All external service credentials and settings are managed via a `.env` file.
 - **Robust & Testable**: Built with a "Functional Core, Imperative Shell" architecture, ensuring the business logic is isolated and easily testable. It uses the `returns` library for explicit, railway-oriented error handling.
 
@@ -31,6 +31,7 @@ Synchronizes the playlist by fetching pending song requests from Supabase and ad
 - `successful`: List of song IDs that were successfully added to the playlist.
 - `not_found`: List of song IDs that could not be found on Spotify.
 - `errors`: List of error messages for songs that failed to be added due to errors.
+- **Important**: If any `errors` occur, the entire sync operation is considered failed.
 
 **Example Response:**
 ```json
@@ -43,17 +44,46 @@ Synchronizes the playlist by fetching pending song requests from Supabase and ad
 
 ### POST /clear-played
 
-Removes tracks from the beginning of the configured playlist that have already been played. This operation is conditional and will only execute if music is actively playing from the correct playlist.
+Removes tracks from the beginning of the configured playlist that have already been played. This operation is conditional and will only execute if music is actively playing from the correct playlist. Optionally automatically refills the playlist using existing sync logic when `PLAYLIST_AUTOFILL_COUNT` is configured.
 
-**Response (200 OK):**
+**Response (200 OK) - Nothing to Delete:**
 ```json
 {
-  "deleted_count": 5
+  "deleted_count": 0,
+  "filled_count": 0
+}
+```
+
+**Response (200 OK) - Successful Autofill:**
+```json
+{
+  "deleted_count": 5,
+  "filled_count": 15
+}
+```
+
+**Response (207 Multi-Status) - Partial Success:**
+```json
+{
+  "deleted_count": 3,
+  "filled_count": 0,
+  "message": "Partial success: Deleted 3 tracks. Not enough songs available in Supabase to complete autofill to minimum count."
 }
 ```
 
 **Response Fields:**
-- `deleted_count`: Number of tracks successfully removed from the playlist.
+- `deleted_count`: Number of tracks successfully removed from the playlist (not including autofilled tracks).
+- `filled_count`: Number of tracks automatically added to the playlist during autofill to maintain the minimum track count.
+- `message`: Additional context information (primarily for 207 responses).
+
+**Autofill Behavior:**
+When `PLAYLIST_AUTOFILL_COUNT` is configured in the environment:
+- The number defines the **minimum track count** to maintain in the playlist after clearing
+- After clearing played tracks, the system automatically fetches new songs from Supabase
+- "Not found" songs are treated as success and ignored
+- **If error_count > 0, the entire operation fails** - no continuation with warnings
+- The system continues refilling automatically until the minimum track count is achieved
+- If no songs have been deleted, none will be added
 
 **Error Responses:**
 - **400 Bad Request**: Current track is not from the configured playlist
@@ -76,7 +106,7 @@ Removes tracks from the beginning of the configured playlist that have already b
   }
   ```
 
-- **500 Internal Server Error**: Unexpected API errors
+- **500 Internal Server Error**: Unexpected API errors or autofill failures
   ```json
   {
     "detail": {
@@ -86,15 +116,29 @@ Removes tracks from the beginning of the configured playlist that have already b
   }
   ```
 
+**Status Code Explanations:**
+- **200 OK**: Success - either nothing to delete (`deleted_count == 0`) OR successful autofill (`filled_count > 0`)
+- **207 Multi-Status**: Partial success - tracks deleted but insufficient songs available for autofill (`deleted_count > 0` AND `filled_count == 0`)
+- **400 Bad Request**: Current track is not from the configured playlist
+- **409 Conflict**: No active playback found
+- **500 Internal Server Error**: Unexpected errors during processing
+
 **Example Usage:**
 ```bash
 curl -X POST "http://localhost:6361/clear-played"
+```
+
+**Configuration Example:**
+```bash
+# In your .env file
+PLAYLIST_AUTOFILL_COUNT=25  # Optional: Maintain 25 tracks after clearing
 ```
 
 **Requirements:**
 - Music must be actively playing from Spotify
 - The currently playing track must be from the configured playlist
 - OAuth authorization must be completed
+- For autofill: Supabase table must contain pending song requests
 
 ## Project Setup
 
@@ -120,6 +164,7 @@ nbstripout --install
 ### 3. Configuration
 1. Copy `.env.example` to `.env`.
 2. Enter your Supabase and Spotify API credentials in the `.env` file.
+3. **Optional**: Configure playlist autofill by adding `PLAYLIST_AUTOFILL_COUNT=25` to maintain a minimum number of 25 tracks after clearing.
 
 ### 4. Linking your Spotify Account
 

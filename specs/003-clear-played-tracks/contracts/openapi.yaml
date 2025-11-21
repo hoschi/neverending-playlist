@@ -13,7 +13,7 @@ paths:
         - Playlist
       responses:
         '200':
-          description: Tracks successfully cleared.
+          description: Success - either nothing to delete (deleted_count == 0) OR successful autofill (filled_count > 0).
           content:
             application/json:
               schema:
@@ -23,6 +23,29 @@ paths:
                     type: integer
                     description: The number of tracks removed from the playlist.
                     example: 5
+                  filled_count:
+                    type: integer
+                    description: The number of tracks automatically added to the playlist during autofill.
+                    example: 15
+        '207':
+          description: Partial success - tracks deleted but insufficient songs available for complete autofill (deleted_count > 0 AND filled_count == 0).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted_count:
+                    type: integer
+                    description: The number of tracks removed from the playlist.
+                    example: 3
+                  filled_count:
+                    type: integer
+                    description: The number of tracks automatically added to the playlist during autofill.
+                    example: 0
+                  message:
+                    type: string
+                    description: Additional context information for partial success.
+                    example: "Partial success: Deleted 3 tracks. Not enough songs available in Supabase to complete autofill to minimum count."
         '400':
           description: Bad Request - The currently playing track is not from the configured playlist.
           content:

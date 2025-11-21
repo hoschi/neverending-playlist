@@ -219,20 +219,99 @@ async def test_sync_playlist_returns_207_on_partial_failure(
 async def test_clear_played_endpoint_success(
     client: TestClient, mock_spotify_client
 ) -> None:
-    """Test clear_played_endpoint returns successful result with deleted_count."""
+    """Test clear_played_endpoint returns 200 when filled_count > 0 (successful autofill)."""
     from src.shell.api import app, get_spotify_client
 
     # Override the dependency
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
 
     with patch(
-        "src.shell.api.clear_played_tracks_from_playlist", return_value=Success(5)
+        "src.shell.api.clear_played_tracks_from_playlist",
+        return_value=Success({"deleted_count": 5, "filled_count": 3}),
     ):
         response = client.post("/clear-played")
 
         assert response.status_code == 200
         content = response.json()
-        assert content == {"deleted_count": 5}
+        assert content["deleted_count"] == 5
+        assert content["filled_count"] == 3
+
+    # Clean up
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_clear_played_endpoint_no_deletion_needed_200(
+    client: TestClient, mock_spotify_client
+) -> None:
+    """Test clear_played_endpoint returns 200 when deleted_count == 0 (nothing to delete)."""
+    from src.shell.api import app, get_spotify_client
+
+    # Override the dependency
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+
+    with patch(
+        "src.shell.api.clear_played_tracks_from_playlist",
+        return_value=Success({"deleted_count": 0, "filled_count": 0}),
+    ):
+        response = client.post("/clear-played")
+
+        assert response.status_code == 200
+        content = response.json()
+        assert content["deleted_count"] == 0
+        assert content["filled_count"] == 0
+
+    # Clean up
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_clear_played_endpoint_partially_successful_207(
+    client: TestClient, mock_spotify_client
+) -> None:
+    """Test clear_played_endpoint returns 207 when deleted_count > 0 AND filled_count == 0."""
+    from src.shell.api import app, get_spotify_client
+
+    # Override the dependency
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+
+    with patch(
+        "src.shell.api.clear_played_tracks_from_playlist",
+        return_value=Success({"deleted_count": 5, "filled_count": 0}),
+    ):
+        response = client.post("/clear-played")
+
+        assert response.status_code == 207
+        content = response.json()
+        assert content["deleted_count"] == 5
+        assert content["filled_count"] == 0
+        assert "Partial success" in content["message"]
+        assert "Not enough songs available" in content["message"]
+
+    # Clean up
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_clear_played_endpoint_successful_deletion_and_refill_200(
+    client: TestClient, mock_spotify_client
+) -> None:
+    """Test clear_played_endpoint returns 200 when deleted_count > 0 AND filled_count > 0."""
+    from src.shell.api import app, get_spotify_client
+
+    # Override the dependency
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+
+    with patch(
+        "src.shell.api.clear_played_tracks_from_playlist",
+        return_value=Success({"deleted_count": 3, "filled_count": 2}),
+    ):
+        response = client.post("/clear-played")
+
+        assert response.status_code == 200
+        content = response.json()
+        assert content["deleted_count"] == 3
+        assert content["filled_count"] == 2
 
     # Clean up
     app.dependency_overrides.clear()
@@ -367,6 +446,3 @@ async def test_clear_played_endpoint_unknown_error_500(
         assert content["detail"]["error"] == "unknown_error"
         assert content["detail"]["message"] == "An unknown error occurred."
         assert "Unexpected database connection failure" in content["detail"]["details"]
-
-    # Clean up
-    app.dependency_overrides.clear()

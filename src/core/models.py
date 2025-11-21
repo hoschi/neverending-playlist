@@ -109,3 +109,7 @@ class ClearPlayedTracksResponse(BaseModel):
         ...,
         description="The number of tracks successfully deleted from the playlist.",
     )
+    filled_count: int = Field(
+        0,
+        description="The number of tracks automatically added to the playlist during autofill to maintain the minimum track count.",
+    )
