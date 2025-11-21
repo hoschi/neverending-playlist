@@ -27,9 +27,16 @@ class MockSupabaseClient(SupabaseClient):
 class MockSpotifyClient(SpotifyClient):
     """A mock Spotify client for testing."""
 
-    def __init__(self, should_fail: bool = False):
+    def __init__(
+        self,
+        should_fail: bool = False,
+        playback_info: dict[str, object] | None = None,
+        playlist_items: list[dict[str, object]] | None = None,
+    ):
         self.added_songs: list[SongRequest] = []
         self.should_fail = should_fail
+        self.playback_info = playback_info
+        self.playlist_items = playlist_items or []
 
     async def get_current_user(self) -> Success[dict[str, str] | None]:
         return Success({"id": "test_user"})
@@ -41,3 +48,25 @@ class MockSpotifyClient(SpotifyClient):
             raise Exception("Spotify API failed")
         self.added_songs.extend(songs)
         return Success([(song, SongAdditionStatus.SUCCESS) for song in songs])
+
+    async def get_current_playback(self) -> Success[dict[str, object] | None]:
+        if self.should_fail:
+            raise Exception("Spotify API failed")
+        return Success(self.playback_info)
+
+    async def get_playlist_items(
+        self,
+        playlist_id: str,  # noqa: ARG002
+    ) -> Success[list[dict[str, object]]]:
+        if self.should_fail:
+            raise Exception("Spotify API failed")
+        return Success(self.playlist_items)
+
+    async def remove_items_from_playlist(
+        self,
+        playlist_id: str,  # noqa: ARG002
+        uris: list[str],  # noqa: ARG002
+    ) -> Success[None]:
+        if self.should_fail:
+            raise Exception("Spotify API failed")
+        return Success(None)

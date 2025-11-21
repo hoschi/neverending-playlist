@@ -75,3 +75,41 @@ class UserAuthorization(BaseModel):
         ..., description="The timestamp when the access token expires."
     )
     scope: str = Field(..., description="The scopes of access granted.")
+
+
+class PlaylistClearFailure(str, Enum):
+    """Fehlertypen für Playlist-Clear-Operationen"""
+
+    PLAYBACK_INACTIVE = "PLAYBACK_INACTIVE"
+    WRONG_PLAYLIST = "WRONG_PLAYLIST"
+    ERROR = "ERROR"
+
+
+class PlaylistClearError(BaseModel):
+    """Detaillierte Fehlerinformationen für Playlist-Clear-Operationen."""
+
+    error_code: PlaylistClearFailure = Field(
+        ...,
+        description="Der Fehlertyp für die Playlist-Clear-Operation.",
+    )
+    message: str = Field(
+        ...,
+        description="Eine benutzerfreundliche Fehlermeldung.",
+    )
+    details: str | None = Field(
+        default=None,
+        description="Zusätzliche technische Details zum Fehler.",
+    )
+
+
+class ClearPlayedTracksResponse(BaseModel):
+    """Response model for the clear played tracks endpoint."""
+
+    deleted_count: int = Field(
+        ...,
+        description="The number of tracks successfully deleted from the playlist.",
+    )
+    filled_count: int = Field(
+        0,
+        description="The number of tracks automatically added to the playlist during autofill to maintain the minimum track count.",
+    )

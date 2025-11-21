@@ -13,4 +13,43 @@
 
 ## Projektspezifisch
 
-- in der CI Umgebung ist keine `.env` Datei vorhanden. Deswegen existiert eine `.env.test` env Datei die mit absicht keine normalen Werte enthält. Schlägt ein Test fehl weil er diese Datei benutzt, stimmt etwas mit dem Mocking nicht, da Mocks installiert werden müssen für die Code Teile die die `.env` Daten benötigen wie der Spotipy Client zum Beispiel. Dieser wird immer gemockt weil er eben nicht erstellt werden kann ohne valide `.env` Datei.
+### Automatische Mock-Settings
+- Tests verwenden automatisch Mock-Settings durch `@pytest.fixture(autouse=True)` in `tests/conftest.py`
+- Keine `.env` oder `.env.test` Datei erforderlich für Tests
+- Alle Tests laufen erfolgreich auch ohne lokale Konfigurationsdateien
+- Mock-Umgebung wird automatisch für alle Tests gesetzt
+
+### Production vs Testing
+- **Production**: App stürzt korrekt ab bei fehlender `.env` Datei (mit klarer Fehlermeldung)
+- **Testing**: Automatische Mock-Settings durch autouse fixture
+- Tests verwenden niemals echte API-Credentials oder echte Services
+
+### Service-Mocking
+- **Spotify OAuth**: Immer gemockt (`MockSpotifyOAuth`)
+- **Supabase Client**: Immer gemockt (`MockSupabaseClient`)
+- **Spotify Client**: Immer gemockt (`MockSpotifyClient`)
+- Alle externen Services werden vollständig gemockt für deterministische Tests
+
+### CI-Environment
+- Tests funktionieren in CI ohne lokale `.env` Datei
+- Automatische Mock-Settings ermöglichen deterministische Test-Ausführung
+- Keine Konfigurationsdateien erforderlich
+
+### Mock-Settings Varianten
+- **Standard Settings**: Mit Autofill (`playlist_autofill_count=150`) für normale Tests
+- **No-Autofill Settings**: Für Edge-Case Tests (`playlist_autofill_count=None`)
+- **Cache Management**: Settings-Cache wird vor/nach jedem Test geleert
+- **Flexible Testing**: Verschiedene Mock-Fixtures für spezifische Test-Szenarien
+
+### Wann Mock-Settings verwenden
+- **Alle Unit-Tests**: Automatisch durch `mock_environment` fixture
+- **Integration-Tests**: Automatisch durch autouse, keine manuelle Konfiguration nötig
+- **Edge-Case Tests**: Verwende `mock_settings_no_autofill` fixture für spezielle Szenarien
+- **Performance Tests**: Mock-Settings ermöglichen schnelle, isolierte Tests ohne externe API-Aufrufe
+
+### Best Practices für Mock-Tests
+- **Determinismus**: Mock-Settings garantieren reproduzierbare Testergebnisse
+- **Isolation**: Tests sind vollständig isoliert von externen Services
+- **Sicherheit**: Keine echten Credentials in Tests oder CI
+- **Wartbarkeit**: Automatisches Mocking reduziert Test-Boilerplate
+- **Coverage**: 100% Test-Coverage möglich ohne externe Abhängigkeiten

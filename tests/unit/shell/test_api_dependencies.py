@@ -10,8 +10,7 @@ from src.shell.api import (
 )
 
 
-# Use global mock_settings fixture from conftest.py
-def test_get_supabase_client(mock_settings):  # noqa: ARG001
+def test_get_supabase_client():
     """Test that the Supabase client provider returns a valid client."""
     client = get_supabase_client()
     assert isinstance(client, SupabaseClient)
@@ -30,7 +29,7 @@ def test_get_spotify_client(mock_get_spotify_client):
         assert mock_get_spotify_client is not None
 
 
-def test_get_spotify_oauth(mock_settings):  # noqa: ARG001
+def test_get_spotify_oauth():
     """Test that the Spotify OAuth provider returns a valid manager."""
     from spotipy.oauth2 import SpotifyOAuth
 
@@ -38,7 +37,7 @@ def test_get_spotify_oauth(mock_settings):  # noqa: ARG001
     assert isinstance(oauth_manager, SpotifyOAuth)
 
 
-def test_get_encryption_service(mock_settings):  # noqa: ARG001
+def test_get_encryption_service():
     """Test that the Encryption service provider returns a valid service."""
     service = get_encryption_service()
     assert isinstance(service, EncryptionService)

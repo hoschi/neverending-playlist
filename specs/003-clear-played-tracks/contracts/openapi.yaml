@@ -1,0 +1,87 @@
+openapi: 3.0.0
+info:
+  title: Supabase to Spotify API
+  version: 1.0.0
+paths:
+  /clear-played:
+    post:
+      summary: Clear Played Tracks
+      description: |
+        Removes all tracks from the configured playlist that appear before the currently playing track.
+        This operation is conditional and will only execute if music is actively playing from the correct playlist.
+      tags:
+        - Playlist
+      responses:
+        '200':
+          description: Success - either nothing to delete (deleted_count == 0) OR successful autofill (filled_count > 0).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted_count:
+                    type: integer
+                    description: The number of tracks removed from the playlist.
+                    example: 5
+                  filled_count:
+                    type: integer
+                    description: The number of tracks automatically added to the playlist during autofill.
+                    example: 15
+        '207':
+          description: Partial success - tracks deleted but insufficient songs available for complete autofill (deleted_count > 0 AND filled_count == 0).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted_count:
+                    type: integer
+                    description: The number of tracks removed from the playlist.
+                    example: 3
+                  filled_count:
+                    type: integer
+                    description: The number of tracks automatically added to the playlist during autofill.
+                    example: 0
+                  message:
+                    type: string
+                    description: Additional context information for partial success.
+                    example: "Partial success: Deleted 3 tracks. Not enough songs available in Supabase to complete autofill to minimum count."
+        '400':
+          description: Bad Request - The currently playing track is not from the configured playlist.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "wrong_playlist"
+                  message:
+                    type: string
+                    example: "The currently playing song is not from the configured playlist."
+        '409':
+          description: Conflict - Playback is not active.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "playback_inactive"
+                  message:
+                    type: string
+                    example: "Cannot clear tracks when no music is playing."
+        '500':
+          description: Internal Server Error - An unexpected error occurred.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "internal_server_error"
+                  message:
+                    type: string
+                    example: "An unexpected error occurred."

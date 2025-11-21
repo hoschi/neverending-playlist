@@ -92,7 +92,7 @@ class ConcreteSpotifyClient(SpotifyClient):
             client_id=settings.spotify_client_id,
             client_secret=settings.spotify_client_secret,
             redirect_uri=settings.spotify_redirect_uri,
-            scope="playlist-modify-public playlist-modify-private",
+            scope="playlist-modify-public playlist-modify-private user-read-playback-state",
             cache_path=None,  # Do not use a cache file
         )
         # Manually prime the auth_manager with the refresh token
@@ -159,5 +159,69 @@ class ConcreteSpotifyClient(SpotifyClient):
 
             return Success(results)
         # can't recover from this error
+        except Exception as e:
+            return Result.from_failure(e)
+
+    async def get_current_playback(self) -> Result[dict | None, Exception]:  # type: ignore[type-arg]
+        """Get the current playback state from Spotify."""
+        try:
+            playback = self.client.current_playback()
+            return Success(playback)
+        except Exception as e:
+            return Result.from_failure(e)
+
+    async def get_playlist_items(
+        self, playlist_id: str
+    ) -> Result[list[dict], Exception]:  # type: ignore[type-arg]
+        """Get all items from a playlist."""
+        try:
+            items = []
+            offset = 0
+            limit = 100
+
+            while True:
+                response = self.client.playlist_items(
+                    playlist_id,
+                    limit=limit,
+                    offset=offset,
+                    fields="items(track(uri,name,artists(name))),total",
+                )
+
+                if not response or not response.get("items"):
+                    break
+
+                items.extend(response["items"])
+
+                if len(response["items"]) < limit:
+                    break
+
+                offset += limit
+
+            return Success(items)
+        except Exception as e:
+            return Result.from_failure(e)
+
+    async def remove_items_from_playlist(
+        self, playlist_id: str, uris: list[str]
+    ) -> Result[None, Exception]:
+        """Remove items from a playlist.
+
+        Args:
+            playlist_id: The ID of the playlist to remove items from
+            uris: List of track URIs to remove
+
+        Note:
+            Spotify Web API allows maximum 100 objects per DELETE request.
+            Reference: https://developer.spotify.com/documentation/web-api/reference/remove-tracks-playlist
+        """
+        try:
+            # Spotify API limit: maximum 100 objects per delete request
+            batch_size = 100
+
+            for i in range(0, len(uris), batch_size):
+                batch = uris[i : i + batch_size]
+                self.client.playlist_remove_all_occurrences_of_items(playlist_id, batch)
+
+            return Success(None)
         except Exception as e:
             return Result.from_failure(e)

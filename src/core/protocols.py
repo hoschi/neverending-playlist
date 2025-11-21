@@ -27,3 +27,13 @@ class SpotifyClient(Protocol):
     async def add_songs_to_playlist(
         self, songs: list[SongRequest]
     ) -> Result[list[tuple[SongRequest, SongAdditionStatus]], Exception]: ...
+
+    async def get_current_playback(self) -> Result[dict | None, Exception]: ...  # type: ignore[type-arg]
+
+    async def get_playlist_items(
+        self, playlist_id: str
+    ) -> Result[list[dict], Exception]: ...  # type: ignore[type-arg]
+
+    async def remove_items_from_playlist(
+        self, playlist_id: str, uris: list[str]
+    ) -> Result[None, Exception]: ...
