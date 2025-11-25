@@ -1,6 +1,6 @@
 # Supabase to Spotify
 
-This project provides a web service to synchronize song requests from a Supabase database to a Spotify playlist.
+This project provides a web service to synchronize song requests from a Supabase database to a Spotify playlist. Programmed almost exclusively with LLMs, this repo implements my [Python blueprint for AI assisted development](https://github.com/hoschi/python-starter).
 
 ## Features
 
@@ -8,6 +8,60 @@ This project provides a web service to synchronize song requests from a Supabase
 - **Clear Played Tracks with Autofill**: A FastAPI endpoint (`POST /clear-played`) removes tracks from the beginning of a Spotify playlist that have already been played. This endpoint only works when music is actively playing from the configured playlist. Optionally configure automatic playlist refilling via `PLAYLIST_AUTOFILL_COUNT` to maintain a constant number of tracks after clearing.
 - **Configurable**: All external service credentials and settings are managed via a `.env` file.
 - **Robust & Testable**: Built with a "Functional Core, Imperative Shell" architecture, ensuring the business logic is isolated and easily testable. It uses the `returns` library for explicit, railway-oriented error handling.
+
+## Motviation / Usage
+
+Discovering music is fun — but manually adding great songs to your Spotify playlists takes time. Especially when your discoveries come from everywhere: radio tracklists, concert setlists, blogs, recommendations, YouTube playlists, or AI-generated suggestions.
+
+At some point you realize:
+You’re finding amazing music, but it rarely ends up in the place where you actually listen to it. Notes, screenshots, snippets — scattered everywhere. What’s missing is a single place where everything comes together.
+
+This is exactly where **Neverending Playlist** comes in.
+It gives you one central spot to collect all your song discoveries — no matter the format — and makes sure they automatically appear in your Spotify playlist. The result is a playlist that never stops growing and keeps evolving over time.
+
+### Easy to get started: paste CSV, import files, or use chatbots
+
+Getting started is super simple, so you can begin right away:
+
+* **Copy & paste CSV data directly**
+  Perfect for small lists or quick finds you want to add immediately.
+* **Import files for large collections**
+  Great for full tracklists or exports you already have somewhere.
+* **Use chatbots to structure messy or unformatted data**
+  Blog posts, screenshots, text dumps — a chatbot can turn them into clean CSV files within seconds.
+
+Automation can be added later if you want — but it’s completely optional.
+
+### Build your own music ecosystem
+
+Once your songs are in Supabase, **Neverending Playlist** takes care of the rest:
+It syncs pending entries into your Spotify playlist, marks processed songs, handles failed searches, and can even automatically remove played tracks and refill the playlist with new ones.
+
+This creates a continuous flow of music fed by:
+
+* Radio tracklists
+* Setlist.fm and live concert setlists
+* Music blogs and “top songs” articles
+* DJ sets and podcast chapters
+* YouTube playlists
+* AI-generated recommendations (“Give me 20 songs like …”)
+* Suggestions from chats, friends, forums, or social media
+* Any text source that a chatbot can turn into a table
+
+Whatever you discover — once it reaches Supabase, it becomes part of your growing playlist.
+
+### Let the music come to you — not the other way around
+
+The real magic isn’t just the automation, but how it changes your approach to finding music:
+
+* You discover songs in places you never looked before.
+* You start seeing potential playlist entries everywhere.
+* You use tools and AI more intentionally to expand your musical world.
+* Your playlist grows organically, without manual work.
+
+The result is a playlist that evolves with you — surprising, alive, and continuously expanding.
+A playlist you curate, but that practically runs itself.
+A playlist that truly is *neverending*.
 
 ## API Endpoints
 
