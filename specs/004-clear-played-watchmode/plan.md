@@ -34,8 +34,8 @@
 
 ### Research Tasks
 1.  **Task**: Research and select the best library for managing recurring background tasks in a FastAPI application.
-    - **Candidates**: `apscheduler`, `arq`, `celery`.
-    - **Criteria**: Simplicity, reliability, ease of integration with FastAPI, and support for managing job state.
+    - **Candidates**: `dramatiq`, `arq`, `celery`.
+    - **Criteria**: Simplicity, reliability, ease of integration with FastAPI, Type-Safety, and support for managing job state.
 2.  **Task**: Determine the best approach for persisting the checker's state.
     - **Candidates**: In-memory singleton (for simplicity, but with noted drawbacks), a new Supabase table, or a Redis cache.
     - **Criteria**: Persistence, scalability (handling multiple workers), and low implementation overhead.

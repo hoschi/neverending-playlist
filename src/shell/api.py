@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from loguru import logger
 from pydantic import SecretStr
 from returns.pipeline import is_successful
-from spotipy.oauth2 import SpotifyOAuth  # type: ignore
+from spotipy.oauth2 import SpotifyOAuth  # type: ignore  # noqa: F401
 
 from src.core.config import get_settings
 from src.core.models import (
@@ -24,8 +24,10 @@ from src.core.services.playlist_service import (
     clear_played_tracks_from_playlist,
     sync_playlist,
 )
+from src.shell.checker import get_checker
 from src.shell.clients import ConcreteSpotifyClient, ConcreteSupabaseClient
 from src.shell.logging_config import setup_logging
+from src.shell.state import get_checker_state
 
 
 def get_supabase_client() -> SupabaseClient:
@@ -57,9 +59,48 @@ def get_encryption_service() -> EncryptionService:
 
 @asynccontextmanager
 async def lifespan(_: object) -> AsyncGenerator[None, None]:  # pragma: no cover
+    """FastAPI application lifespan management.
+
+    Manages the startup and shutdown lifecycle of the application,
+    including dramatiq checker initialization and cleanup.
+    """
     setup_logging()
     logger.info("FastAPI application starting up...")
-    yield
+
+    # Initialize dramatiq checker for background tasks
+    checker = None
+
+    try:
+        # Get checker with client factories
+        checker = get_checker(
+            spotify_client_factory=lambda: ConcreteSpotifyClient(),
+            supabase_client_factory=lambda: ConcreteSupabaseClient(),
+        )
+
+        # Start checker for background monitoring using dramatiq
+        try:
+            await checker.start_checker()
+            logger.info("Background checker started successfully with dramatiq")
+        except Exception as e:
+            logger.warning(f"Failed to start background checker: {e}")
+            # Don't fail startup if checker fails to start
+            # The checker will retry on subsequent calls
+
+        yield
+
+    finally:
+        # Shutdown lifecycle
+        logger.info("FastAPI application shutting down...")
+
+        try:
+            # Stop checker first if it was created
+            if checker is not None:
+                checker.stop_checker()
+                logger.info("Background checker stopped successfully")
+        except Exception as e:
+            logger.error(f"Error stopping checker during shutdown: {e}")
+
+        logger.info("FastAPI application shutdown complete")
 
 
 app: FastAPI = FastAPI(lifespan=lifespan)
@@ -240,6 +281,142 @@ async def clear_played_endpoint(
             "filled_count": filled_count,
         },
     )
+
+
+@app.get("/clear-played-watchmode")
+async def clear_played_watchmode_endpoint(
+    spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
+) -> JSONResponse:
+    """API endpoint to activate watchmode for automatic playlist clearing.
+
+    This endpoint checks if the background checker is already running and
+    activates it if not running and playback is active.
+    """
+    try:
+        # Get the global checker instance
+        checker = get_checker(
+            spotify_client_factory=lambda: ConcreteSpotifyClient(),
+            supabase_client_factory=lambda: ConcreteSupabaseClient(),
+        )
+
+        # Check if checker is already running
+        checker_state = await get_checker_state()
+
+        if checker_state.is_running:
+            logger.info("Watchmode is already active")
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "already_active",
+                    "message": "Watchmode is already active",
+                    "checker_state": {
+                        "is_running": checker_state.is_running,
+                        "retries_left": checker_state.retries_left,
+                        "last_playback_detected": checker_state.last_playback_detected,
+                        "last_checked": checker_state.last_checked.isoformat()
+                        if checker_state.last_checked
+                        else None,
+                        "next_check": checker_state.next_check.isoformat()
+                        if checker_state.next_check
+                        else None,
+                    },
+                },
+            )
+
+        # Checker is not running, try to start it
+        logger.info("Starting watchmode checker")
+
+        # Check for active playback first
+        try:
+            playback_result = await spotify_client.get_current_playback()
+
+            if not is_successful(playback_result):
+                logger.warning("Failed to check playback status")
+                return JSONResponse(
+                    status_code=409,
+                    content={
+                        "status": "playback_check_failed",
+                        "message": "Failed to check playback status",
+                        "checker_state": {
+                            "is_running": False,
+                            "retries_left": checker_state.retries_left,
+                            "last_playback_detected": False,
+                        },
+                    },
+                )
+
+            current_playback = playback_result.unwrap()
+            if current_playback is None:
+                logger.warning("No active playback detected")
+                return JSONResponse(
+                    status_code=409,
+                    content={
+                        "status": "no_active_playback",
+                        "message": "No active playback detected. Watchmode can only be activated when Spotify is playing.",
+                        "checker_state": {
+                            "is_running": False,
+                            "retries_left": checker_state.retries_left,
+                            "last_playback_detected": False,
+                        },
+                    },
+                )
+
+        except Exception as e:
+            logger.error(f"Error checking playback: {e}")
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "playback_check_error",
+                    "message": "Error checking playback status",
+                    "details": str(e),
+                },
+            )
+
+        # Active playback detected, start the checker
+        try:
+            updated_state = await checker.start_checker()
+
+            logger.info("Watchmode started successfully")
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "started",
+                    "message": "Watchmode activated successfully",
+                    "checker_state": {
+                        "is_running": updated_state.is_running,
+                        "retries_left": updated_state.retries_left,
+                        "last_playback_detected": updated_state.last_playback_detected,
+                        "last_checked": updated_state.last_checked.isoformat()
+                        if updated_state.last_checked
+                        else None,
+                        "next_check": updated_state.next_check.isoformat()
+                        if updated_state.next_check
+                        else None,
+                    },
+                },
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to start checker: {e}")
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "start_failed",
+                    "message": "Failed to start watchmode",
+                    "details": str(e),
+                },
+            )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in watchmode endpoint: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "unexpected_error",
+                "message": "An unexpected error occurred",
+                "details": str(e),
+            },
+        )
 
 
 def main() -> None:  # pragma: no cover

@@ -38,8 +38,9 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 - **`__init__.py`** - Leere Shell-Package Initialisierung.
 - **`api.py`** - FastAPI Web-Interface. Stellt die Endpunkte `/login` und `/callback` für den OAuth-Flow sowie **`/sync-playlist`** (gibt 207 bei partial failure, sonst strukturierte Erfolge) für die Playlist-Synchronisation und **`/clear-played`** für das Entfernen von abgespielten Tracks bereit. `/clear-played` nutzt auch SupabaseClient für Autofill-Funktionalität.
 - **`clients.py`** - Enthält die konkreten Implementierungen `ConcreteSupabaseClient` und `ConcreteSpotifyClient`, die die in `core/protocols.py` definierten Protokolle erfüllen. `ConcreteSpotifyClient` um die neuen Methoden für Playback-Check und Track-Entfernung.
-- **`cli.py`** - Ein einfacher Typer-CLI-Einstiegspunkt, der die `main`-Funktion für die API startet.
 - **`logging_config.py`** - Konfiguriert `Loguru` für strukturiertes Logging basierend auf den Einstellungen in `config.py`.
+- **`state.py`** - Singleton-basiertes In-Memory State Management für den Watchmode Checker. Thread-Safe Implementation mit `asyncio.Lock`, bietet `get_checker_state()` Funktion und atomische State-Updates für den globalen Zustand.
+- **`cli.py`** - Ein einfacher Typer-CLI-Einstiegspunkt, der die `main`-Funktion für die API startet.
 
 ## Testabdeckung
 
