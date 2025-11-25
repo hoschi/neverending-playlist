@@ -3,7 +3,7 @@
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2025-11-21
 **Status**: Draft
-**Feature**: [specs/001-clear-played-watchmode/spec.md](specs/001-clear-played-watchmode/spec.md)
+**Feature**: [specs/004-clear-played-watchmode/spec.md](specs/004-clear-played-watchmode/spec.md)
 
 ## Content Quality
 

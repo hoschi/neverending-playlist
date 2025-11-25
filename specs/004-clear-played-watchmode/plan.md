@@ -1,6 +1,6 @@
 # Implementation Plan: Clear Played Watchmode
 
-**Feature Branch**: `001-clear-played-watchmode`
+**Feature Branch**: `004-clear-played-watchmode`
 **Feature Spec**: [spec.md](spec.md)
 
 ## 1. Technical Context & Dependencies
