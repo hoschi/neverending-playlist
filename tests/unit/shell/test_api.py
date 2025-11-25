@@ -8,6 +8,9 @@ from fastapi.testclient import TestClient
 from returns.result import Success
 
 from src.core.models import (
+    PlaylistClearError,
+    PlaylistClearFailure,
+    SyncFailure,
     SyncResult,
 )
 from src.core.services.encryption_service import EncryptionService
@@ -479,20 +482,27 @@ async def test_clear_played_watchmode_executed_successfully(
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
     app.dependency_overrides[get_supabase_client] = lambda: Mock()
 
-    with patch("src.shell.api.watch_service") as mock_watch_service:
-        # Mock the active playback check
-        mock_spotify_client.get_current_playback.return_value = Success(
-            {
-                "item": {"uri": "spotify:track:current_track"},
-                "context": {
-                    "type": "playlist",
-                    "uri": "spotify:playlist:test_playlist",
-                },
-            }
+    # Mock the active playback check
+    mock_spotify_client.get_current_playback.return_value = Success(
+        {
+            "item": {"uri": "spotify:track:current_track"},
+            "context": {
+                "type": "playlist",
+                "uri": "spotify:playlist:test_playlist",
+            },
+        }
+    )
+
+    with patch("src.shell.api.get_watch_service") as mock_get_watch_service:
+        # Mock the WatchService instance
+        mock_watch_service_instance = AsyncMock()
+        mock_watch_service_instance.get_state.return_value = AsyncMock(
+            is_running=False, retries_left=5, next_check=None
         )
-        mock_watch_service.return_value = Success(
-            {"deleted_count": 3, "filled_count": 2}
+        mock_watch_service_instance.start_watch_service.return_value = AsyncMock(
+            is_running=True, retries_left=5, next_check=None
         )
+        mock_get_watch_service.return_value = mock_watch_service_instance
 
         with patch("src.shell.api.get_settings") as mock_settings:
             mock_settings.return_value.spotify_playlist_id = "test_playlist"
@@ -502,10 +512,9 @@ async def test_clear_played_watchmode_executed_successfully(
 
     assert response.status_code == 200
     content = response.json()
-    assert content["status"] == "executed"
-    assert "Watchmode executed successfully" in content["message"]
-    assert content["deleted_count"] == 3
-    assert content["filled_count"] == 2
+    assert content["status"] == "monitoring_started"
+    assert "Background monitoring has been started" in content["message"]
+    assert "monitoring" in content
 
     # Clean up
     app.dependency_overrides.clear()

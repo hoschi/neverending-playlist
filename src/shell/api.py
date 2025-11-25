@@ -6,6 +6,7 @@ Dieses Modul enthält alle API-Endpunkte und die FastAPI-Anwendungskonfiguration
 import ssl
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 from typing import Annotated
 
 import spotipy  # type: ignore
@@ -31,7 +32,7 @@ from src.core.services.playlist_service import (
 )
 from src.shell.clients import ConcreteSpotifyClient, ConcreteSupabaseClient
 from src.shell.logging_config import setup_logging
-from src.shell.watch_service import get_watch_service, watch_service
+from src.shell.watch_service import get_watch_service
 
 
 def get_supabase_client() -> SupabaseClient:
@@ -65,46 +66,16 @@ def get_encryption_service() -> EncryptionService:
 async def lifespan(_: object) -> AsyncGenerator[None, None]:  # pragma: no cover
     """FastAPI application lifespan management.
 
-    Manages the startup and shutdown lifecycle of the application,
-    including dramatiq checker initialization and cleanup.
+    Manages the startup and shutdown lifecycle of the application.
     """
     setup_logging()
     logger.info("FastAPI application starting up...")
 
-    # Initialize WatchService for background tasks
-    watch_service = None
+    yield
 
-    try:
-        # Get WatchService with client factories
-        watch_service = get_watch_service(
-            spotify_client_factory=get_spotify_client,
-            supabase_client_factory=get_supabase_client,
-        )
-
-        # Start WatchService for background monitoring using asyncio
-        try:
-            await watch_service.start_watch_service()
-            logger.info("Background WatchService started successfully")
-        except Exception as e:
-            logger.warning(f"Failed to start background WatchService: {e}")
-            # Don't fail startup if WatchService fails to start
-            # The WatchService will retry on subsequent calls
-
-        yield
-
-    finally:
-        # Shutdown lifecycle
-        logger.info("FastAPI application shutting down...")
-
-        try:
-            # Stop WatchService first if it was created
-            if watch_service is not None:
-                await watch_service.stop_watch_service()
-                logger.info("Background WatchService stopped successfully")
-        except Exception as e:
-            logger.error(f"Error stopping WatchService during shutdown: {e}")
-
-        logger.info("FastAPI application shutdown complete")
+    # Shutdown lifecycle
+    logger.info("FastAPI application shutting down...")
+    logger.info("FastAPI application shutdown complete")
 
 
 app: FastAPI = FastAPI(lifespan=lifespan)
@@ -292,11 +263,8 @@ async def clear_played_watchmode_endpoint(
     supabase_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
 ) -> JSONResponse:
-    """API endpoint to activate watchmode for automatic playlist clearing.
-    """
+    """API endpoint to activate watchmode for automatic playlist clearing."""
     try:
-        settings = get_settings()
-
         # Check for active playback first
         try:
             playback_result = await spotify_client.get_current_playback()
@@ -333,69 +301,87 @@ async def clear_played_watchmode_endpoint(
                 },
             )
 
-        # Use the new watch_service function pattern
+        # Get WatchService instance and start background monitoring
         try:
-            result = await watch_service(
-                supabase_client=supabase_client,
-                spotify_client=spotify_client,
-                config_playlist_id=settings.spotify_playlist_id,
-                autofill_count=settings.playlist_autofill_count,
+            watch_service_instance = get_watch_service(
+                spotify_client_factory=lambda: spotify_client,
+                supabase_client_factory=lambda: supabase_client,
             )
 
-            if is_successful(result):
-                logger.info("Watchmode executed successfully")
-                result_data = result.unwrap()
-                deleted_count = result_data["deleted_count"]
-                filled_count = result_data.get("filled_count", 0)
+            current_state = await watch_service_instance.get_state()
+
+            # Check if already running
+            if current_state.is_running:
+                logger.info("WatchService bereits aktiv")
+                next_check = current_state.next_check or datetime.utcnow() + timedelta(
+                    minutes=10
+                )
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "status": "already_running",
+                        "message": "Background monitoring is already active",
+                        "monitoring": {
+                            "next_check": next_check.isoformat() + "Z",
+                            "retries_left": current_state.retries_left,
+                        },
+                    },
+                )
+
+            # Start background monitoring
+            try:
+                new_state = await watch_service_instance.start_watch_service()
+
+                logger.info("Background monitoring started successfully")
+                next_check = new_state.next_check or datetime.utcnow() + timedelta(
+                    minutes=10
+                )
 
                 return JSONResponse(
                     status_code=200,
                     content={
-                        "status": "executed",
-                        "message": "Watchmode executed successfully",
-                        "deleted_count": deleted_count,
-                        "filled_count": filled_count,
+                        "status": "monitoring_started",
+                        "message": "Background monitoring has been started",
+                        "monitoring": {
+                            "next_check": next_check.isoformat() + "Z",
+                            "retries_left": new_state.retries_left,
+                        },
                     },
                 )
-            else:
-                error = result.failure()
-                logger.warning(f"Watch service failed: {error.message}")
 
-                if error.error_code == PlaylistClearFailure.PLAYBACK_INACTIVE:
+            except Exception as e:
+                logger.error(f"Error starting watch service: {e}")
+
+                # Handle specific error cases
+                if (
+                    "no_active_playback" in str(e).lower()
+                    or "kein aktives playback" in str(e).lower()
+                ):
                     return JSONResponse(
                         status_code=409,
                         content={
                             "status": "playback_inactive",
-                            "message": error.message,
-                            "details": error.details,
-                        },
-                    )
-                elif error.error_code == PlaylistClearFailure.WRONG_PLAYLIST:
-                    return JSONResponse(
-                        status_code=400,
-                        content={
-                            "status": "wrong_playlist",
-                            "message": error.message,
-                            "details": error.details,
+                            "message": "No active playback detected. Watchmode can only be started when Spotify is playing.",
+                            "details": str(e),
                         },
                     )
                 else:
                     return JSONResponse(
                         status_code=500,
                         content={
-                            "status": "execution_failed",
-                            "message": error.message,
-                            "details": error.details,
+                            "status": "startup_error",
+                            "message": "Error starting background monitoring",
+                            "details": str(e),
                         },
                     )
 
         except Exception as e:
-            logger.error(f"Error executing watch service: {e}")
+            logger.error(f"Error accessing watch service: {e}")
             return JSONResponse(
                 status_code=500,
                 content={
-                    "status": "execution_error",
-                    "message": "Error executing watch service",
+                    "status": "service_error",
+                    "message": "Error accessing watch service",
                     "details": str(e),
                 },
             )

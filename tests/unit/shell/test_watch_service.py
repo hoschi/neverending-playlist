@@ -8,13 +8,8 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from returns.pipeline import is_successful
 from returns.result import Failure, Success
 
-from src.core.models import (
-    PlaylistClearError,
-    PlaylistClearFailure,
-)
 from src.shell.state import reset_checker_state
 from src.shell.watch_service import WatchService, get_watch_service, watch_service
 

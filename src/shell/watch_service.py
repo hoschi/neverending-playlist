@@ -299,7 +299,7 @@ class WatchService:
 
         except Exception as e:
             logger.error(f"Fehler beim Löschen abgespielter Tracks: {e}")
-            raise
+            raise RuntimeError(f"Clear played tracks failed: {e}") from e
 
 
 async def watch_service(

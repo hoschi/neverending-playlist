@@ -228,7 +228,7 @@ class Checker:
 
         except Exception as e:
             logger.error(f"Failed to clear played tracks: {e}")
-            raise
+            raise RuntimeError(f"Clear played tracks failed: {e}") from e
 
 
 # Global checker instance for single instance pattern
