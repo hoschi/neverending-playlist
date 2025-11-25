@@ -8,8 +8,10 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from returns.pipeline import is_successful
 from returns.result import Failure, Success
 
+from src.core.models import PlaylistClearError, PlaylistClearFailure
 from src.shell.state import reset_checker_state
 from src.shell.watch_service import WatchService, get_watch_service, watch_service
 
@@ -369,9 +371,9 @@ class TestNewWatchServiceFunction:
 
         expected_result = {"deleted_count": 5, "filled_count": 3}
 
-        # Mock the clear_played_tracks_from_playlist function
+        # Mock the clear_played_tracks_from_playlist function at module level
         with patch(
-            "src.shell.watch_service.clear_played_tracks_from_playlist"
+            "src.core.services.playlist_service.clear_played_tracks_from_playlist"
         ) as mock_clear:
             mock_clear.return_value = Success(expected_result)
 
@@ -407,7 +409,7 @@ class TestNewWatchServiceFunction:
 
         # Mock the clear_played_tracks_from_playlist function
         with patch(
-            "src.shell.watch_service.clear_played_tracks_from_playlist"
+            "src.core.services.playlist_service.clear_played_tracks_from_playlist"
         ) as mock_clear:
             mock_clear.return_value = Failure(error)
 
@@ -429,7 +431,7 @@ class TestNewWatchServiceFunction:
 
         # Mock the clear_played_tracks_from_playlist function to raise exception
         with patch(
-            "src.shell.watch_service.clear_played_tracks_from_playlist"
+            "src.core.services.playlist_service.clear_played_tracks_from_playlist"
         ) as mock_clear:
             mock_clear.side_effect = Exception("Unexpected error")
 
@@ -458,7 +460,7 @@ class TestNewWatchServiceFunction:
 
         # Mock the clear_played_tracks_from_playlist function
         with patch(
-            "src.shell.watch_service.clear_played_tracks_from_playlist"
+            "src.core.services.playlist_service.clear_played_tracks_from_playlist"
         ) as mock_clear:
             mock_clear.return_value = Success(expected_result)
 

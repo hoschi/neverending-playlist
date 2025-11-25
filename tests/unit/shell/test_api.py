@@ -496,12 +496,25 @@ async def test_clear_played_watchmode_executed_successfully(
     with patch("src.shell.api.get_watch_service") as mock_get_watch_service:
         # Mock the WatchService instance
         mock_watch_service_instance = AsyncMock()
-        mock_watch_service_instance.get_state.return_value = AsyncMock(
-            is_running=False, retries_left=5, next_check=None
+
+        from datetime import datetime, timedelta
+
+        mock_state_instance = AsyncMock()
+        mock_state_instance.is_running = False
+        mock_state_instance.retries_left = 5
+        mock_state_instance.next_check = None
+        mock_watch_service_instance.get_state.return_value = mock_state_instance
+
+        mock_started_state_instance = AsyncMock()
+        mock_started_state_instance.is_running = True
+        mock_started_state_instance.retries_left = 5
+        mock_started_state_instance.next_check = datetime.utcnow() + timedelta(
+            minutes=10
         )
-        mock_watch_service_instance.start_watch_service.return_value = AsyncMock(
-            is_running=True, retries_left=5, next_check=None
+        mock_watch_service_instance.start_watch_service.return_value = (
+            mock_started_state_instance
         )
+
         mock_get_watch_service.return_value = mock_watch_service_instance
 
         with patch("src.shell.api.get_settings") as mock_settings:

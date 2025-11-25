@@ -7,7 +7,7 @@ Löschen von abgespielten Tracks aus Playlists alle 10 Minuten mit asyncio.
 import asyncio
 import contextlib
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from loguru import logger
 from returns.pipeline import is_successful
@@ -87,7 +87,7 @@ class WatchService:
                 is_running=True,
                 retries_left=5,
                 last_playback_detected=True,
-                next_check=datetime.utcnow() + timedelta(minutes=10),
+                next_check=datetime.now(UTC) + timedelta(minutes=10),
             )
 
             logger.info("WatchService erfolgreich mit asyncio gestartet")
@@ -208,7 +208,7 @@ class WatchService:
             logger.info("Führe Clear Played Tracks Background Task aus")
 
             # Aktualisiere last_checked Timestamp
-            await update_checker_state(last_checked=datetime.utcnow())
+            await update_checker_state(last_checked=datetime.now(UTC))
 
             # Prüfe auf aktives Playback
             active_playback = await self._check_active_playback()
@@ -236,7 +236,7 @@ class WatchService:
 
             # Plane nächsten Check
             await update_checker_state(
-                next_check=datetime.utcnow() + timedelta(minutes=10)
+                next_check=datetime.now(UTC) + timedelta(minutes=10)
             )
 
             logger.info("Background Task erfolgreich abgeschlossen")

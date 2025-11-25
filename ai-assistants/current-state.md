@@ -1,6 +1,6 @@
 # Current State
 
-**Zuletzt aktualisiert:** 20. November 2025, 17:31 UTC
+**Zuletzt aktualisiert:** 25. November 2025, 16:48 UTC
 
 ## Repository Overview
 
@@ -36,7 +36,7 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 #### src/shell/
 
 - **`__init__.py`** - Leere Shell-Package Initialisierung.
-- **`api.py`** - FastAPI Web-Interface. Stellt die Endpunkte `/login` und `/callback` für den OAuth-Flow sowie **`/sync-playlist`** (gibt 207 bei partial failure, sonst strukturierte Erfolge) für die Playlist-Synchronisation, **`/clear-played`** für das Entfernen von abgespielten Tracks und **`GET /clear-played-watchmode`** für die Aktivierung/Status-Abfrage des Watchmode-Features bereit. `/clear-played` nutzt auch SupabaseClient für Autofill-Funktionalität.
+- **`api.py`** - FastAPI Web-Interface. Stellt die Endpunkte `/login` und `/callback` für den OAuth-Flow sowie **`/sync-playlist`** (gibt 207 bei partial failure, sonst strukturierte Erfolge) für die Playlist-Synchronisation, **`/clear-played`** für das Entfernen von abgespielten Tracks und **`GET /clear-played-watchmode`** für die Aktivierung/Status-Abfrage des Watchmode-Features bereit. **`Korrektur`** des `/clear-played-watchmode` Endpunkts: Entfernte manuelle `next_check` Berechnung und verwendet jetzt direkt die Werte aus `CheckerState` für konsistente State-Verwaltung. `/clear-played` nutzt auch SupabaseClient für Autofill-Funktionalität.
 - **`clients.py`** - Enthält die konkreten Implementierungen `ConcreteSupabaseClient` und `ConcreteSpotifyClient`, die die in `core/protocols.py` definierten Protokolle erfüllen. `ConcreteSpotifyClient` um die neuen Methoden für Playback-Check und Track-Entfernung.
 - **`logging_config.py`** - Konfiguriert `Loguru` für strukturiertes Logging basierend auf den Einstellungen in `config.py`.
 - **`state.py`** - Singleton-basiertes In-Memory State Management für den Watchmode WatchService. Thread-Safe Implementation mit `asyncio.Lock` für globalen Zustand.

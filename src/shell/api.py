@@ -6,7 +6,6 @@ Dieses Modul enthält alle API-Endpunkte und die FastAPI-Anwendungskonfiguration
 import ssl
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
 from typing import Annotated
 
 import spotipy  # type: ignore
@@ -313,16 +312,25 @@ async def clear_played_watchmode_endpoint(
             # Check if already running
             if current_state.is_running:
                 logger.info("WatchService bereits aktiv")
-                next_check = current_state.next_check or datetime.utcnow() + timedelta(
-                    minutes=10
-                )
+                # State-Konsistenz prüfen: wenn Checker läuft, muss next_check gesetzt sein
+                if current_state.next_check is None:
+                    raise HTTPException(
+                        status_code=500,
+                        detail={
+                            "error": "internal_state_inconsistent",
+                            "message": "Internal state error: next_check is None while monitoring is active",
+                        },
+                    )
+
+                next_check_value = current_state.next_check
+
                 return JSONResponse(
                     status_code=200,
                     content={
                         "status": "already_running",
                         "message": "Background monitoring is already active",
                         "monitoring": {
-                            "next_check": next_check.isoformat() + "Z",
+                            "next_check": next_check_value.isoformat() + "Z",
                             "retries_left": current_state.retries_left,
                         },
                     },
@@ -333,9 +341,18 @@ async def clear_played_watchmode_endpoint(
                 new_state = await watch_service_instance.start_watch_service()
 
                 logger.info("Background monitoring started successfully")
-                next_check = new_state.next_check or datetime.utcnow() + timedelta(
-                    minutes=10
-                )
+
+                # State-Konsistenz prüfen: wenn Checker läuft, muss next_check gesetzt sein
+                if new_state.next_check is None:
+                    raise HTTPException(
+                        status_code=500,
+                        detail={
+                            "error": "internal_state_inconsistent",
+                            "message": "Internal state error: next_check is None while monitoring is active",
+                        },
+                    )
+
+                next_check_value = new_state.next_check
 
                 return JSONResponse(
                     status_code=200,
@@ -343,7 +360,7 @@ async def clear_played_watchmode_endpoint(
                         "status": "monitoring_started",
                         "message": "Background monitoring has been started",
                         "monitoring": {
-                            "next_check": next_check.isoformat() + "Z",
+                            "next_check": next_check_value.isoformat() + "Z",
                             "retries_left": new_state.retries_left,
                         },
                     },
