@@ -12,8 +12,8 @@
 - **Existing Logic**: The core logic for clearing tracks already exists in a function called by the `POST /clear-played` endpoint. This new feature will act as an automated orchestrator for this existing logic.
 
 ### New Dependencies
-- **Background Task Scheduling**: A library is needed to manage the recurring 10-minute task.
-- **State Management**: A mechanism is required to store the state of the running checker (e.g., is it active, retry count, last status).
+- **Background Task Scheduling**: A library is needed to manage the recurring 10-minute task. See `./research.md` for decision.
+- **State Management**: A mechanism is required to store the state of the running checker (e.g., is it active, retry count, last status).  See `./research.md` for decision.
 
 ### Technical Unknowns & Risks
 - **Background Task Management**: How to best implement a long-running, stateful background task in FastAPI without tightly coupling it to the web server process. The solution must be robust to server restarts.
