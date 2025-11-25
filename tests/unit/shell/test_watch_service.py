@@ -8,10 +8,15 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from returns.pipeline import is_successful
 from returns.result import Failure, Success
 
+from src.core.models import (
+    PlaylistClearError,
+    PlaylistClearFailure,
+)
 from src.shell.state import reset_checker_state
-from src.shell.watch_service import WatchService, get_watch_service
+from src.shell.watch_service import WatchService, get_watch_service, watch_service
 
 
 @pytest.fixture
@@ -356,3 +361,123 @@ class TestWatchServiceClearPlayedTracks:
                 pytest.raises(RuntimeError),
             ):
                 await fresh_watch_service._clear_played_tracks()
+
+
+class TestNewWatchServiceFunction:
+    """Tests für die neue watch_service Funktion nach playlist_service.py Pattern."""
+
+    @pytest.mark.asyncio
+    async def test_watch_service_success(self):
+        """Test erfolgreiche watch_service Ausführung."""
+        mock_supabase = AsyncMock()
+        mock_spotify = AsyncMock()
+
+        expected_result = {"deleted_count": 5, "filled_count": 3}
+
+        # Mock the clear_played_tracks_from_playlist function
+        with patch(
+            "src.shell.watch_service.clear_played_tracks_from_playlist"
+        ) as mock_clear:
+            mock_clear.return_value = Success(expected_result)
+
+            result = await watch_service(
+                supabase_client=mock_supabase,
+                spotify_client=mock_spotify,
+                config_playlist_id="test_playlist",
+                autofill_count=10,
+            )
+
+        assert is_successful(result)
+        assert result.unwrap() == expected_result
+        mock_clear.assert_called_once()
+
+        # Verify correct arguments were passed
+        call_args = mock_clear.call_args
+        assert call_args[0][0] == mock_spotify  # spotify_client
+        assert call_args[0][1] == mock_supabase  # supabase_client
+        assert call_args[0][2] == "test_playlist"  # config_playlist_id
+        assert call_args[0][3] == 10  # autofill_count
+
+    @pytest.mark.asyncio
+    async def test_watch_service_failure(self):
+        """Test watch_service bei Fehler."""
+        mock_supabase = AsyncMock()
+        mock_spotify = AsyncMock()
+
+        error = PlaylistClearError(
+            error_code=PlaylistClearFailure.PLAYBACK_INACTIVE,
+            message="No active playback found",
+            details="User is not playing music",
+        )
+
+        # Mock the clear_played_tracks_from_playlist function
+        with patch(
+            "src.shell.watch_service.clear_played_tracks_from_playlist"
+        ) as mock_clear:
+            mock_clear.return_value = Failure(error)
+
+            result = await watch_service(
+                supabase_client=mock_supabase,
+                spotify_client=mock_spotify,
+                config_playlist_id="test_playlist",
+            )
+
+        assert not is_successful(result)
+        assert result.failure() == error
+        mock_clear.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_watch_service_exception(self):
+        """Test watch_service bei unerwarteter Exception."""
+        mock_supabase = AsyncMock()
+        mock_spotify = AsyncMock()
+
+        # Mock the clear_played_tracks_from_playlist function to raise exception
+        with patch(
+            "src.shell.watch_service.clear_played_tracks_from_playlist"
+        ) as mock_clear:
+            mock_clear.side_effect = Exception("Unexpected error")
+
+            result = await watch_service(
+                supabase_client=mock_supabase,
+                spotify_client=mock_spotify,
+                config_playlist_id="test_playlist",
+                autofill_count=None,
+            )
+
+        assert not is_successful(result)
+        failure = result.failure()
+        assert failure.error_code == PlaylistClearFailure.ERROR
+        assert "Unexpected error in watch service" in failure.message
+        assert failure.details is not None
+        assert "Unexpected error" in failure.details
+        mock_clear.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_watch_service_without_autofill(self):
+        """Test watch_service ohne Autofill."""
+        mock_supabase = AsyncMock()
+        mock_spotify = AsyncMock()
+
+        expected_result = {"deleted_count": 2, "filled_count": 0}
+
+        # Mock the clear_played_tracks_from_playlist function
+        with patch(
+            "src.shell.watch_service.clear_played_tracks_from_playlist"
+        ) as mock_clear:
+            mock_clear.return_value = Success(expected_result)
+
+            result = await watch_service(
+                supabase_client=mock_supabase,
+                spotify_client=mock_spotify,
+                config_playlist_id="test_playlist",
+                autofill_count=None,  # Autofill deaktiviert
+            )
+
+        assert is_successful(result)
+        assert result.unwrap() == expected_result
+        mock_clear.assert_called_once()
+
+        # Verify autofill_count is passed as None
+        call_args = mock_clear.call_args
+        assert call_args[0][3] is None

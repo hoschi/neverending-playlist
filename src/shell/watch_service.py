@@ -11,8 +11,13 @@ from datetime import datetime, timedelta
 
 from loguru import logger
 from returns.pipeline import is_successful
+from returns.result import Result
 
 from src.core.config import get_settings
+from src.core.models import (
+    PlaylistClearError,
+    PlaylistClearFailure,
+)
 from src.core.protocols import SpotifyClient, SupabaseClient
 from src.core.services.playlist_service import clear_played_tracks_from_playlist
 from src.shell.state import (
@@ -297,7 +302,61 @@ class WatchService:
             raise
 
 
-# Globaler WatchService Instanz für Single Instance Pattern
+async def watch_service(
+    supabase_client: SupabaseClient,
+    spotify_client: SpotifyClient,
+    config_playlist_id: str,
+    autofill_count: int | None = None,
+) -> Result[dict[str, int], PlaylistClearError]:
+    """
+    Führt die Watch Service Funktionalität aus - basierend auf dem playlist_service.py Pattern.
+
+    Diese Funktion implementiert das Clear Played Watchmode Feature durch direkte Verwendung
+    von Client-Instanzen und Rückgabe eines Result-Typs mit Success/Failure Pattern.
+
+    Args:
+        supabase_client: Direkte SupabaseClient Instanz
+        spotify_client: Direkte SpotifyClient Instanz
+        config_playlist_id: Die konfigurierte Playlist-ID
+        autofill_count: Anzahl der Tracks zum automatischen Auffüllen (None = deaktiviert)
+
+    Returns:
+        Result[dict[str, int], PlaylistClearError]:
+            - Success(dict): Dictionary mit 'deleted_count' und 'filled_count' Schlüsseln
+            - Failure(PlaylistClearError): Detaillierte Fehlerinformationen
+    """
+    logger.info("Starting watch service operation")
+
+    try:
+        # Verwende die bestehende clear_played_tracks_from_playlist Logik
+        from src.core.services.playlist_service import clear_played_tracks_from_playlist
+
+        result = await clear_played_tracks_from_playlist(
+            spotify_client,
+            supabase_client,
+            config_playlist_id,
+            autofill_count,
+        )
+
+        if is_successful(result):
+            logger.info("Watch service completed successfully")
+            return result
+        else:
+            error = result.failure()
+            logger.warning("Watch service failed: {error}", error=error.message)
+            return Result.from_failure(error)
+
+    except Exception as e:
+        logger.error("Unexpected error in watch service: {error}", error=e)
+        return Result.from_failure(
+            PlaylistClearError(
+                error_code=PlaylistClearFailure.ERROR,
+                message="Unexpected error in watch service",
+                details=str(e),
+            )
+        )
+
+
 _global_watch_service: WatchService | None = None
 
 
@@ -305,9 +364,7 @@ def get_watch_service(
     spotify_client_factory: Callable[[], SpotifyClient],
     supabase_client_factory: Callable[[], SupabaseClient],
 ) -> WatchService:
-    """Gibt die globale WatchService Instanz zurück.
-
-    Diese Funktion implementiert ein Singleton Pattern, um sicherzustellen,
+    """Diese Funktion implementiert ein Singleton Pattern, um sicherzustellen,
     dass nur eine WatchService Instanz in der Anwendung läuft.
 
     Args:

@@ -15,3 +15,7 @@ Deine Antworten müssen dem Stil und der Qualität des existierenden Codes im `s
 
 1.  **Aktualisiere immer die Repository-Dokumentation:** Folge den Anweisungen in `ai-assistants/06-update-current-state.md` um `ai-assistants/current-state.md` zu aktualisieren. Dies ist OBLIGATORISCH bei jeder Änderung im `src/` Verzeichnis - egal ob neue Dateien, geänderte Dateien oder gelöschte Dateien.
 2.  **Überprüfe** deine Änderungen auf Fehler mit `poe check-all`
+
+## Projektspezifisch
+
+1.  **Nicht `python -c "..."` verwenden**, erstelle oder verändere ein Python Script in `tmp/` und führe dieses aus!

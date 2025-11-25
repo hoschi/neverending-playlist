@@ -31,7 +31,7 @@ from src.core.services.playlist_service import (
 )
 from src.shell.clients import ConcreteSpotifyClient, ConcreteSupabaseClient
 from src.shell.logging_config import setup_logging
-from src.shell.watch_service import get_watch_service
+from src.shell.watch_service import get_watch_service, watch_service
 
 
 def get_supabase_client() -> SupabaseClient:
@@ -289,46 +289,13 @@ async def clear_played_endpoint(
 
 @app.get("/clear-played-watchmode")
 async def clear_played_watchmode_endpoint(
+    supabase_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
 ) -> JSONResponse:
     """API endpoint to activate watchmode for automatic playlist clearing.
-
-    This endpoint checks if the background WatchService is already running and
-    activates it if not running and playback is active.
     """
     try:
-        # Get the global WatchService instance
-        watch_service = get_watch_service(
-            spotify_client_factory=get_spotify_client,
-            supabase_client_factory=get_supabase_client,
-        )
-
-        # Check if WatchService is already running
-        checker_state = await watch_service.get_state()
-
-        if checker_state.is_running:
-            logger.info("Watchmode is already active")
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "status": "already_active",
-                    "message": "Watchmode is already active",
-                    "checker_state": {
-                        "is_running": checker_state.is_running,
-                        "retries_left": checker_state.retries_left,
-                        "last_playback_detected": checker_state.last_playback_detected,
-                        "last_checked": checker_state.last_checked.isoformat()
-                        if checker_state.last_checked
-                        else None,
-                        "next_check": checker_state.next_check.isoformat()
-                        if checker_state.next_check
-                        else None,
-                    },
-                },
-            )
-
-        # WatchService is not running, try to start it
-        logger.info("Starting watchmode WatchService")
+        settings = get_settings()
 
         # Check for active playback first
         try:
@@ -341,11 +308,6 @@ async def clear_played_watchmode_endpoint(
                     content={
                         "status": "playback_check_failed",
                         "message": "Failed to check playback status",
-                        "checker_state": {
-                            "is_running": False,
-                            "retries_left": checker_state.retries_left,
-                            "last_playback_detected": False,
-                        },
                     },
                 )
 
@@ -357,11 +319,6 @@ async def clear_played_watchmode_endpoint(
                     content={
                         "status": "no_active_playback",
                         "message": "No active playback detected. Watchmode can only be activated when Spotify is playing.",
-                        "checker_state": {
-                            "is_running": False,
-                            "retries_left": checker_state.retries_left,
-                            "last_playback_detected": False,
-                        },
                     },
                 )
 
@@ -376,37 +333,69 @@ async def clear_played_watchmode_endpoint(
                 },
             )
 
-        # Active playback detected, start the WatchService
+        # Use the new watch_service function pattern
         try:
-            updated_state = await watch_service.start_watch_service()
-
-            logger.info("Watchmode started successfully")
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "status": "started",
-                    "message": "Watchmode activated successfully",
-                    "checker_state": {
-                        "is_running": updated_state.is_running,
-                        "retries_left": updated_state.retries_left,
-                        "last_playback_detected": updated_state.last_playback_detected,
-                        "last_checked": updated_state.last_checked.isoformat()
-                        if updated_state.last_checked
-                        else None,
-                        "next_check": updated_state.next_check.isoformat()
-                        if updated_state.next_check
-                        else None,
-                    },
-                },
+            result = await watch_service(
+                supabase_client=supabase_client,
+                spotify_client=spotify_client,
+                config_playlist_id=settings.spotify_playlist_id,
+                autofill_count=settings.playlist_autofill_count,
             )
 
+            if is_successful(result):
+                logger.info("Watchmode executed successfully")
+                result_data = result.unwrap()
+                deleted_count = result_data["deleted_count"]
+                filled_count = result_data.get("filled_count", 0)
+
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "status": "executed",
+                        "message": "Watchmode executed successfully",
+                        "deleted_count": deleted_count,
+                        "filled_count": filled_count,
+                    },
+                )
+            else:
+                error = result.failure()
+                logger.warning(f"Watch service failed: {error.message}")
+
+                if error.error_code == PlaylistClearFailure.PLAYBACK_INACTIVE:
+                    return JSONResponse(
+                        status_code=409,
+                        content={
+                            "status": "playback_inactive",
+                            "message": error.message,
+                            "details": error.details,
+                        },
+                    )
+                elif error.error_code == PlaylistClearFailure.WRONG_PLAYLIST:
+                    return JSONResponse(
+                        status_code=400,
+                        content={
+                            "status": "wrong_playlist",
+                            "message": error.message,
+                            "details": error.details,
+                        },
+                    )
+                else:
+                    return JSONResponse(
+                        status_code=500,
+                        content={
+                            "status": "execution_failed",
+                            "message": error.message,
+                            "details": error.details,
+                        },
+                    )
+
         except Exception as e:
-            logger.error(f"Failed to start WatchService: {e}")
+            logger.error(f"Error executing watch service: {e}")
             return JSONResponse(
                 status_code=500,
                 content={
-                    "status": "start_failed",
-                    "message": "Failed to start watchmode",
+                    "status": "execution_error",
+                    "message": "Error executing watch service",
                     "details": str(e),
                 },
             )

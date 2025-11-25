@@ -99,8 +99,6 @@ class TestCheckerInitialization:
         assert checker.supabase_client_factory == mock_supabase_client_factory
         assert checker.state.is_running is False
         assert checker.state.retries_left == 5
-        assert isinstance(checker.broker, type(checker.broker))
-        assert isinstance(checker.backend, type(checker.backend))
 
     def test_checker_singleton_pattern(
         self, mock_spotify_client_factory, mock_supabase_client_factory

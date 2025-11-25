@@ -1,14 +1,12 @@
 """Background task checker for Clear Played Watchmode functionality.
 
 This module implements the background task management for automatically clearing
-played tracks from playlists every 10 minutes using dramatiq.
+played tracks from playlists every 10 minutes using asyncio.
 """
 
 from collections.abc import Callable
 from datetime import datetime, timedelta
 
-from dramatiq.brokers.rabbitmq import RabbitmqBroker
-from dramatiq.rate_limits.backends import RedisBackend
 from loguru import logger
 from pydantic import BaseModel
 from returns.pipeline import is_successful
@@ -53,8 +51,6 @@ class Checker:
         self.spotify_client_factory = spotify_client_factory
         self.supabase_client_factory = supabase_client_factory
         self.state: CheckerState = CheckerState()
-        self.broker = RabbitmqBroker()  # type: ignore
-        self.backend = RedisBackend()  # type: ignore
 
     async def start_checker(self) -> CheckerState:
         """Start the background checker task.
@@ -168,6 +164,9 @@ class Checker:
 
             # Execute the clear played tracks logic
             await self._clear_played_tracks()
+
+            # Reset retry counter on successful operation
+            self.state.retries_left = 5
 
             # Schedule next check
             self.state.next_check = datetime.utcnow() + timedelta(minutes=10)
