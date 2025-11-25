@@ -16,8 +16,8 @@
 - **State Management**: A mechanism is required to store the state of the running checker (e.g., is it active, retry count, last status).
 
 ### Technical Unknowns & Risks
-- **Background Task Management**: How to best implement a long-running, stateful background task in FastAPI without tightly coupling it to the web server process. The solution must be robust to server restarts. **[NEEDS CLARIFICATION]**
-- **State Storage**: Where to store the checker's state. An in-memory solution is simple but volatile and won't work with multiple server workers or survive restarts. A persistent solution (like a database or Redis) is more robust but adds complexity. **[NEEDS CLARIFICATION]**
+- **Background Task Management**: How to best implement a long-running, stateful background task in FastAPI without tightly coupling it to the web server process. The solution must be robust to server restarts.
+- **State Storage**: Where to store the checker's state. An in-memory solution is simple but volatile and won't work with multiple server workers or survive restarts. A persistent solution (like a database or Redis) is more robust but adds complexity.
 - **Concurrency**: Ensuring that only one checker instance runs per user. The current spec mentions "per user/playlist combination," but the new user input simplifies this to just "a checker," implying a single, global checker. This needs to be confirmed, but we will assume a single global checker for now.
 
 ## 2. Constitution Check & Gate Evaluation
