@@ -41,16 +41,14 @@ def mock_supabase_client_factory(mock_supabase_client):
 
 
 @pytest.fixture
-async def fresh_watch_service(
-    mock_spotify_client_factory, mock_supabase_client_factory
-):
+async def fresh_watch_service(mock_spotify_client, mock_supabase_client):
     """Frische WatchService Instanz für jeden Test."""
     # Reset global watch service to avoid state contamination
     import src.shell.watch_service
 
     src.shell.watch_service._global_watch_service = None
     await reset_checker_state()
-    return WatchService(mock_spotify_client_factory, mock_supabase_client_factory)
+    return WatchService(mock_spotify_client, mock_supabase_client)
 
 
 @pytest.fixture
@@ -67,28 +65,22 @@ class TestWatchServiceInitialization:
     """Tests für WatchService Initialisierung."""
 
     def test_watch_service_initialization(
-        self, mock_spotify_client_factory, mock_supabase_client_factory
+        self, mock_spotify_client, mock_supabase_client
     ):
         """Test WatchService wird korrekt initialisiert."""
-        watch_service = WatchService(
-            mock_spotify_client_factory, mock_supabase_client_factory
-        )
+        watch_service = WatchService(mock_spotify_client, mock_supabase_client)
 
-        assert watch_service.spotify_client_factory == mock_spotify_client_factory
-        assert watch_service.supabase_client_factory == mock_supabase_client_factory
+        assert watch_service.spotify_client == mock_spotify_client
+        assert watch_service.supabase_client == mock_supabase_client
         assert watch_service._task is None
         assert not watch_service._shutdown_event.is_set()
 
     def test_watch_service_singleton_pattern(
-        self, mock_spotify_client_factory, mock_supabase_client_factory
+        self, mock_spotify_client, mock_supabase_client
     ):
         """Test WatchService Singleton Pattern."""
-        watch_service1 = watch_service(
-            mock_spotify_client_factory, mock_supabase_client_factory
-        )
-        watch_service2 = watch_service(
-            mock_spotify_client_factory, mock_supabase_client_factory
-        )
+        watch_service1 = watch_service(mock_spotify_client, mock_supabase_client)
+        watch_service2 = watch_service(mock_spotify_client, mock_supabase_client)
 
         # Same instance should be returned
         assert watch_service1 is watch_service2
@@ -135,19 +127,21 @@ class TestWatchServicePlaybackDetection:
     @pytest.mark.asyncio
     async def test_check_active_playback_success(self, fresh_watch_service):
         """Test erfolgreiche Playback Detection."""
-        mock_client = fresh_watch_service.spotify_client_factory()
-        mock_client.get_current_playback.return_value = Success({"is_playing": True})
+        fresh_watch_service.spotify_client.get_current_playback.return_value = Success(
+            {"is_playing": True}
+        )
 
         result = await fresh_watch_service._check_active_playback()
 
         assert result is True
-        mock_client.get_current_playback.assert_called_once()
+        fresh_watch_service.spotify_client.get_current_playback.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_check_active_playback_no_playback(self, fresh_watch_service):
         """Test wenn kein Playback aktiv ist."""
-        mock_client = fresh_watch_service.spotify_client_factory()
-        mock_client.get_current_playback.return_value = Success(None)
+        fresh_watch_service.spotify_client.get_current_playback.return_value = Success(
+            None
+        )
 
         result = await fresh_watch_service._check_active_playback()
 
@@ -156,8 +150,9 @@ class TestWatchServicePlaybackDetection:
     @pytest.mark.asyncio
     async def test_check_active_playback_api_failure(self, fresh_watch_service):
         """Test Playback Detection bei API Fehler."""
-        mock_client = fresh_watch_service.spotify_client_factory()
-        mock_client.get_current_playback.return_value = Failure(Exception("API Error"))
+        fresh_watch_service.spotify_client.get_current_playback.return_value = Failure(
+            Exception("API Error")
+        )
 
         result = await fresh_watch_service._check_active_playback()
 
@@ -166,8 +161,9 @@ class TestWatchServicePlaybackDetection:
     @pytest.mark.asyncio
     async def test_check_active_playback_exception(self, fresh_watch_service):
         """Test Playback Detection bei Exception."""
-        mock_client = fresh_watch_service.spotify_client_factory()
-        mock_client.get_current_playback.side_effect = Exception("Network Error")
+        fresh_watch_service.spotify_client.get_current_playback.side_effect = Exception(
+            "Network Error"
+        )
 
         result = await fresh_watch_service._check_active_playback()
 

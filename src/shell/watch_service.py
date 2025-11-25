@@ -37,17 +37,17 @@ class WatchService:
 
     def __init__(
         self,
-        spotify_client_factory: Callable[[], SpotifyClient],
-        supabase_client_factory: Callable[[], SupabaseClient],
+        spotify_client: SpotifyClient,
+        supabase_client: SupabaseClient,
     ) -> None:
-        """Initialisiert den WatchService mit Client Factories.
+        """Initialisiert den WatchService mit Client Instanzen.
 
         Args:
-            spotify_client_factory: Factory-Funktion zum Erstellen von Spotify Clients
-            supabase_client_factory: Factory-Funktion zum Erstellen von Supabase Clients
+            spotify_client: Spotify Client Instanz
+            supabase_client: Supabase Client Instanz
         """
-        self.spotify_client_factory = spotify_client_factory
-        self.supabase_client_factory = supabase_client_factory
+        self.spotify_client = spotify_client
+        self.supabase_client = supabase_client
         self._task: asyncio.Task[None] | None = None
         self._shutdown_event = asyncio.Event()
 
@@ -259,8 +259,7 @@ class WatchService:
             bool: True wenn aktives Playback erkannt wird, False sonst
         """
         try:
-            spotify_client = self.spotify_client_factory()
-            current_playback_result = await spotify_client.get_current_playback()
+            current_playback_result = await self.spotify_client.get_current_playback()
 
             if not is_successful(current_playback_result):
                 return False
@@ -280,13 +279,11 @@ class WatchService:
         """
         try:
             settings = get_settings()
-            spotify_client = self.spotify_client_factory()
-            supabase_client = self.supabase_client_factory()
 
             # Rufe die bestehende Kern-Logik zum Löschen abgespielter Tracks auf
             result = await clear_played_tracks_from_playlist(
-                spotify_client,
-                supabase_client,
+                self.spotify_client,
+                self.supabase_client,
                 settings.spotify_playlist_id,
                 settings.playlist_autofill_count,
             )
@@ -359,15 +356,15 @@ _global_watch_service: WatchService | None = None
 
 
 def watch_service(
-    spotify_client_factory: Callable[[], SpotifyClient],
-    supabase_client_factory: Callable[[], SupabaseClient],
+    spotify_client: SpotifyClient,
+    supabase_client: SupabaseClient,
 ) -> WatchService:
     """Diese Funktion implementiert ein Singleton Pattern, um sicherzustellen,
     dass nur eine WatchService Instanz in der Anwendung läuft.
 
     Args:
-        spotify_client_factory: Factory-Funktion zum Erstellen von Spotify Clients
-        supabase_client_factory: Factory-Funktion zum Erstellen von Supabase Clients
+        spotify_client: Spotify Client Instanz
+        supabase_client: Supabase Client Instanz
 
     Returns:
         WatchService: Die globale WatchService Instanz
@@ -375,8 +372,6 @@ def watch_service(
     global _global_watch_service
 
     if _global_watch_service is None:
-        _global_watch_service = WatchService(
-            spotify_client_factory, supabase_client_factory
-        )
+        _global_watch_service = WatchService(spotify_client, supabase_client)
 
     return _global_watch_service

@@ -303,8 +303,8 @@ async def clear_played_watchmode_endpoint(
         # Get WatchService instance and start background monitoring
         try:
             watch_service_instance = watch_service(
-                spotify_client_factory=lambda: spotify_client,
-                supabase_client_factory=lambda: supabase_client,
+                spotify_client=spotify_client,
+                supabase_client=supabase_client,
             )
 
             current_state = await watch_service_instance.get_state()

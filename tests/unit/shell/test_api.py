@@ -480,7 +480,8 @@ async def test_clear_played_watchmode_executed_successfully(
 
     # Override the dependency
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
-    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+    mock_supabase_client = Mock()
+    app.dependency_overrides[get_supabase_client] = lambda: mock_supabase_client
 
     # Mock the active playback check
     mock_spotify_client.get_current_playback.return_value = Success(
@@ -493,7 +494,7 @@ async def test_clear_played_watchmode_executed_successfully(
         }
     )
 
-    with patch("src.shell.api.get_watch_service") as mock_get_watch_service:
+    with patch("src.shell.api.watch_service") as mock_watch_service:
         # Mock the WatchService instance
         mock_watch_service_instance = AsyncMock()
 
@@ -515,7 +516,7 @@ async def test_clear_played_watchmode_executed_successfully(
             mock_started_state_instance
         )
 
-        mock_get_watch_service.return_value = mock_watch_service_instance
+        mock_watch_service.return_value = mock_watch_service_instance
 
         with patch("src.shell.api.get_settings") as mock_settings:
             mock_settings.return_value.spotify_playlist_id = "test_playlist"
