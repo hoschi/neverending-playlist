@@ -13,7 +13,7 @@ from returns.result import Failure, Success
 
 from src.core.models import PlaylistClearError, PlaylistClearFailure
 from src.shell.state import reset_checker_state
-from src.shell.watch_service import WatchService, get_watch_service, watch_service
+from src.shell.watch_service import WatchService, watch_service, clear_playlist
 
 
 @pytest.fixture
@@ -83,10 +83,10 @@ class TestWatchServiceInitialization:
         self, mock_spotify_client_factory, mock_supabase_client_factory
     ):
         """Test WatchService Singleton Pattern."""
-        watch_service1 = get_watch_service(
+        watch_service1 = watch_service(
             mock_spotify_client_factory, mock_supabase_client_factory
         )
-        watch_service2 = get_watch_service(
+        watch_service2 = watch_service(
             mock_spotify_client_factory, mock_supabase_client_factory
         )
 
@@ -377,7 +377,7 @@ class TestNewWatchServiceFunction:
         ) as mock_clear:
             mock_clear.return_value = Success(expected_result)
 
-            result = await watch_service(
+            result = await clear_playlist(
                 supabase_client=mock_supabase,
                 spotify_client=mock_spotify,
                 config_playlist_id="test_playlist",
@@ -413,7 +413,7 @@ class TestNewWatchServiceFunction:
         ) as mock_clear:
             mock_clear.return_value = Failure(error)
 
-            result = await watch_service(
+            result = await clear_playlist(
                 supabase_client=mock_supabase,
                 spotify_client=mock_spotify,
                 config_playlist_id="test_playlist",
@@ -435,7 +435,7 @@ class TestNewWatchServiceFunction:
         ) as mock_clear:
             mock_clear.side_effect = Exception("Unexpected error")
 
-            result = await watch_service(
+            result = await clear_playlist(
                 supabase_client=mock_supabase,
                 spotify_client=mock_spotify,
                 config_playlist_id="test_playlist",
@@ -464,7 +464,7 @@ class TestNewWatchServiceFunction:
         ) as mock_clear:
             mock_clear.return_value = Success(expected_result)
 
-            result = await watch_service(
+            result = await clear_playlist(
                 supabase_client=mock_supabase,
                 spotify_client=mock_spotify,
                 config_playlist_id="test_playlist",

@@ -302,15 +302,13 @@ class WatchService:
             raise RuntimeError(f"Clear played tracks failed: {e}") from e
 
 
-async def watch_service(
+async def clear_playlist(
     supabase_client: SupabaseClient,
     spotify_client: SpotifyClient,
     config_playlist_id: str,
     autofill_count: int | None = None,
 ) -> Result[dict[str, int], PlaylistClearError]:
     """
-    Führt die Watch Service Funktionalität aus - basierend auf dem playlist_service.py Pattern.
-
     Diese Funktion implementiert das Clear Played Watchmode Feature durch direkte Verwendung
     von Client-Instanzen und Rückgabe eines Result-Typs mit Success/Failure Pattern.
 
@@ -360,7 +358,7 @@ async def watch_service(
 _global_watch_service: WatchService | None = None
 
 
-def get_watch_service(
+def watch_service(
     spotify_client_factory: Callable[[], SpotifyClient],
     supabase_client_factory: Callable[[], SupabaseClient],
 ) -> WatchService:

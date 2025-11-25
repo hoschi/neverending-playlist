@@ -31,7 +31,7 @@ from src.core.services.playlist_service import (
 )
 from src.shell.clients import ConcreteSpotifyClient, ConcreteSupabaseClient
 from src.shell.logging_config import setup_logging
-from src.shell.watch_service import get_watch_service
+from src.shell.watch_service import watch_service
 
 
 def get_supabase_client() -> SupabaseClient:
@@ -302,7 +302,7 @@ async def clear_played_watchmode_endpoint(
 
         # Get WatchService instance and start background monitoring
         try:
-            watch_service_instance = get_watch_service(
+            watch_service_instance = watch_service(
                 spotify_client_factory=lambda: spotify_client,
                 supabase_client_factory=lambda: supabase_client,
             )
