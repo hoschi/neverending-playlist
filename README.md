@@ -1,4 +1,4 @@
-# Supabase to Spotify
+# Neverending Playlist
 
 This project provides a web service to synchronize song requests from a Supabase database to a Spotify playlist. Programmed almost exclusively with LLMs, this repo implements my [Python blueprint for AI assisted development](https://github.com/hoschi/python-starter).
 
@@ -206,7 +206,7 @@ PLAYLIST_AUTOFILL_COUNT=25  # Optional: Maintain 25 tracks after clearing
 ```bash
 # Create and activate the conda environment
 conda env create --file conda.yml
-conda activate supabase-to-spotify
+conda activate nervending-playlist
 
 # Install dependencies using Poetry
 poetry install

@@ -1,4 +1,4 @@
-# Current State: Supabase to Spotify Repository
+# Current State
 
 **Zuletzt aktualisiert:** 20. November 2025, 17:31 UTC
 

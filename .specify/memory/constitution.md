@@ -15,7 +15,7 @@ Sync Impact Report:
 - **Follow-up TODOs**:
   - None
 -->
-# Supabase to Spotify Constitution
+# Constitution
 
 ## Core Principles
 

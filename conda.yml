@@ -1,4 +1,4 @@
-name: supabase-to-spotify
+name: nervending-playlist
 channels:
   - defaults
 dependencies:

@@ -1,7 +1,7 @@
 # Implementation Plan: Authorization Code Flow
 
 **Branch**: `002-feature-request-authorization` | **Date**: 2025-10-07 | **Spec**: [./spec.md](./spec.md)
-**Input**: Feature specification from `/Users/hoschi/repos/supabase-to-spotify/specs/002-feature-request-authorization/spec.md`
+**Input**: Feature specification from `specs/002-feature-request-authorization/spec.md`
 
 ## Execution Flow (/plan command scope)
 ```

@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "supabase-to-spotify"
+name = "nervending-playlist"
 version = "0.1.0"
-description = "Supabase to Spotify"
+description = "Neverending Playlist"
 authors = ["Stefan Gojan"]
 readme = "README.md"
 packages = [{include = "src"}]
