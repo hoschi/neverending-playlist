@@ -1,3 +1,8 @@
+"""FastAPI API für Supabase to Spotify Anwendung.
+
+Dieses Modul enthält alle API-Endpunkte und die FastAPI-Anwendungskonfiguration.
+"""
+
 import ssl
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -24,10 +29,9 @@ from src.core.services.playlist_service import (
     clear_played_tracks_from_playlist,
     sync_playlist,
 )
-from src.shell.checker import get_checker
 from src.shell.clients import ConcreteSpotifyClient, ConcreteSupabaseClient
 from src.shell.logging_config import setup_logging
-from src.shell.state import get_checker_state
+from src.shell.watch_service import get_watch_service
 
 
 def get_supabase_client() -> SupabaseClient:
@@ -67,24 +71,24 @@ async def lifespan(_: object) -> AsyncGenerator[None, None]:  # pragma: no cover
     setup_logging()
     logger.info("FastAPI application starting up...")
 
-    # Initialize dramatiq checker for background tasks
-    checker = None
+    # Initialize WatchService for background tasks
+    watch_service = None
 
     try:
-        # Get checker with client factories
-        checker = get_checker(
-            spotify_client_factory=lambda: ConcreteSpotifyClient(),
-            supabase_client_factory=lambda: ConcreteSupabaseClient(),
+        # Get WatchService with client factories
+        watch_service = get_watch_service(
+            spotify_client_factory=get_spotify_client,
+            supabase_client_factory=get_supabase_client,
         )
 
-        # Start checker for background monitoring using dramatiq
+        # Start WatchService for background monitoring using asyncio
         try:
-            await checker.start_checker()
-            logger.info("Background checker started successfully with dramatiq")
+            await watch_service.start_watch_service()
+            logger.info("Background WatchService started successfully")
         except Exception as e:
-            logger.warning(f"Failed to start background checker: {e}")
-            # Don't fail startup if checker fails to start
-            # The checker will retry on subsequent calls
+            logger.warning(f"Failed to start background WatchService: {e}")
+            # Don't fail startup if WatchService fails to start
+            # The WatchService will retry on subsequent calls
 
         yield
 
@@ -93,12 +97,12 @@ async def lifespan(_: object) -> AsyncGenerator[None, None]:  # pragma: no cover
         logger.info("FastAPI application shutting down...")
 
         try:
-            # Stop checker first if it was created
-            if checker is not None:
-                checker.stop_checker()
-                logger.info("Background checker stopped successfully")
+            # Stop WatchService first if it was created
+            if watch_service is not None:
+                await watch_service.stop_watch_service()
+                logger.info("Background WatchService stopped successfully")
         except Exception as e:
-            logger.error(f"Error stopping checker during shutdown: {e}")
+            logger.error(f"Error stopping WatchService during shutdown: {e}")
 
         logger.info("FastAPI application shutdown complete")
 
@@ -289,18 +293,18 @@ async def clear_played_watchmode_endpoint(
 ) -> JSONResponse:
     """API endpoint to activate watchmode for automatic playlist clearing.
 
-    This endpoint checks if the background checker is already running and
+    This endpoint checks if the background WatchService is already running and
     activates it if not running and playback is active.
     """
     try:
-        # Get the global checker instance
-        checker = get_checker(
-            spotify_client_factory=lambda: ConcreteSpotifyClient(),
-            supabase_client_factory=lambda: ConcreteSupabaseClient(),
+        # Get the global WatchService instance
+        watch_service = get_watch_service(
+            spotify_client_factory=get_spotify_client,
+            supabase_client_factory=get_supabase_client,
         )
 
-        # Check if checker is already running
-        checker_state = await get_checker_state()
+        # Check if WatchService is already running
+        checker_state = await watch_service.get_state()
 
         if checker_state.is_running:
             logger.info("Watchmode is already active")
@@ -323,8 +327,8 @@ async def clear_played_watchmode_endpoint(
                 },
             )
 
-        # Checker is not running, try to start it
-        logger.info("Starting watchmode checker")
+        # WatchService is not running, try to start it
+        logger.info("Starting watchmode WatchService")
 
         # Check for active playback first
         try:
@@ -372,9 +376,9 @@ async def clear_played_watchmode_endpoint(
                 },
             )
 
-        # Active playback detected, start the checker
+        # Active playback detected, start the WatchService
         try:
-            updated_state = await checker.start_checker()
+            updated_state = await watch_service.start_watch_service()
 
             logger.info("Watchmode started successfully")
             return JSONResponse(
@@ -397,7 +401,7 @@ async def clear_played_watchmode_endpoint(
             )
 
         except Exception as e:
-            logger.error(f"Failed to start checker: {e}")
+            logger.error(f"Failed to start WatchService: {e}")
             return JSONResponse(
                 status_code=500,
                 content={

@@ -3,16 +3,18 @@
 ## 1. Background Task Scheduling
 
 ### Decision
-We will use **`dramatiq`** for managing the recurring 10-minute background task.
+We will use **native Python `asyncio`** for managing the recurring 10-minute background task.
 
 ### Rationale
-- **Type-Safety and Better Annotations**: `dramatiq` provides excellent Type-Safety with proper type annotations, which aligns with the project's strict typing requirements. Unlike `apscheduler`, `dramatiq` has comprehensive type stubs and supports async operations natively.
-- **Simplicity and Integration**: `dramatiq` is designed for modern Python applications and integrates cleanly with FastAPI's async ecosystem. It provides a simple, async-first approach without complex configuration.
-- **Production-Ready**: `dramatiq` is built for production use with robust error handling, retry mechanisms, and excellent logging capabilities, making it suitable for background task processing.
-- **Async-Native**: As an asyncio-native library, `dramatiq` is perfectly suited for this async-based application, avoiding any blocking operations.
-- **Type Safety**: The main driver for this change is superior Type-Safety compared to `apscheduler`, which lacks proper type annotations.
+- **Zero External Dependencies**: `asyncio` is built into Python's standard library, eliminating the need for external dependencies like RabbitMQ, Redis, or additional scheduling libraries. This reduces operational complexity and potential failure points.
+- **Perfect Type-Safety**: `asyncio` provides excellent Type-Safety with proper type annotations, aligning with the project's strict typing requirements. We can create fully typed async tasks and coroutines.
+- **Seamless FastAPI Integration**: Asyncio is the foundation of FastAPI's async ecosystem, providing perfect integration without complex configuration or bridge code.
+- **Simplicity and Control**: Native asyncio gives us complete control over the task lifecycle, error handling, and state management without the overhead of external scheduling frameworks.
+- **Built-in Error Handling**: Python's asyncio provides robust error handling and cancellation mechanisms, making it suitable for production background task processing.
+- **No Infrastructure Requirements**: Unlike dramatiq, celery, or arq, asyncio doesn't require separate message brokers, worker processes, or external services like RabbitMQ or Redis.
 
 ### Alternatives Considered
+- **`dramatiq`**: Originally selected but rejected due to external infrastructure dependencies (RabbitMQ, Redis) that users don't have running. Overkill for a simple recurring task.
 - **`apscheduler`**: Originally considered but rejected due to poor Type-Safety and lack of proper type annotations, which doesn't align with the project's strict typing requirements.
 - **`celery`**: Overkill for this feature. It requires a separate message broker (like RabbitMQ or Redis) and a worker process, which adds significant operational complexity for a single, simple recurring task.
 - **`arq` (Asyncio-RQ)**: A good `asyncio`-native option, but like Celery, it requires a Redis instance and a separate worker setup. For this self-contained feature, keeping the scheduler within the main application process is simpler.

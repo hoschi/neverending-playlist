@@ -11,9 +11,9 @@
 - **Error Handling**: `returns.Result` monad
 - **Existing Logic**: The core logic for clearing tracks already exists in a function called by the `POST /clear-played` endpoint. This new feature will act as an automated orchestrator for this existing logic.
 
-### New Dependencies
-- **Background Task Scheduling**: A library is needed to manage the recurring 10-minute task. See `./research.md` for decision.
-- **State Management**: A mechanism is required to store the state of the running checker (e.g., is it active, retry count, last status).  See `./research.md` for decision.
+### Technology Stack Update
+- **Background Task Scheduling**: Native Python `asyncio` with custom `WatchService` class (see `./research.md` for decision).
+- **State Management**: Existing in-memory state management from `src/shell/state.py` with thread-safe asyncio operations.
 
 ### Technical Unknowns & Risks
 - **Background Task Management**: How to best implement a long-running, stateful background task in FastAPI without tightly coupling it to the web server process. The solution must be robust to server restarts.
@@ -32,15 +32,15 @@
 
 ## 3. Phase 0: Outline & Research
 
-### Research Tasks
+### Research Tasks (COMPLETED)
 1.  **Task**: Research and select the best library for managing recurring background tasks in a FastAPI application.
-    - **Candidates**: `dramatiq`, `arq`, `celery`.
-    - **Criteria**: Simplicity, reliability, ease of integration with FastAPI, Type-Safety, and support for managing job state.
+    - **Decision**: Use native Python `asyncio` with custom `WatchService` class
+    - **Reasoning**: Zero external dependencies, perfect Type-Safety, seamless FastAPI integration
 2.  **Task**: Determine the best approach for persisting the checker's state.
-    - **Candidates**: In-memory singleton (for simplicity, but with noted drawbacks), a new Supabase table, or a Redis cache.
-    - **Criteria**: Persistence, scalability (handling multiple workers), and low implementation overhead.
+    - **Decision**: Use existing in-memory state management from `src/shell/state.py`
+    - **Reasoning**: Thread-safe asyncio operations, aligned with project architecture
 
-**Output**: A `research.md` file will be created to document the decisions.
+**Output**: `research.md` created documenting asyncio decision and state management approach.
 
 ## 4. Phase 1: Design & Contracts
 
@@ -65,24 +65,24 @@
 - Explanation of the different status responses.
 
 ### Agent Context Update
-- The chosen scheduling library (e.g., `apscheduler`) will be added to the agent's context file.
+- The chosen scheduling approach (native Python `asyncio` with custom `WatchService`) is added to the agent's context file.
 
 ## 5. Phase 2: Implementation & Testing (High-Level Plan)
 
 ### Implementation Tasks
-1.  **Task**: Integrate the chosen scheduling library into the FastAPI application lifecycle (startup/shutdown events).
-2.  **Task**: Implement the state management service to handle the `CheckerState` (e.g., `get_checker_state`, `update_checker_state`).
-3.  **Task**: Create the background job function that:
-    - Fetches the current `CheckerState`.
+1.  **Task**: Create `WatchService` class in `src/shell/watch_service.py` using native Python `asyncio`.
+2.  **Task**: Integrate existing state management from `src/shell/state.py` with thread-safe asyncio operations.
+3.  **Task**: Implement background task function in `WatchService` that:
+    - Uses `asyncio.create_task()` for the main background loop
     - Calls the existing `clear_played_tracks_from_playlist` logic.
     - Handles success: resets the retry counter.
     - Handles playback-not-found errors: decrements the retry counter.
-    - Stops the job if retries are exhausted.
-    - Updates the `CheckerState`.
-4.  **Task**: Implement the `GET /clear-played-watchmode` endpoint that:
+    - Stops the task if retries are exhausted.
+    - Updates the `CheckerState` with asyncio-safe operations.
+4.  **Task**: Update the `GET /clear-played-watchmode` endpoint to use the new `WatchService`:
     - Checks for active playback.
-    - Checks if a checker is already running by querying the state.
-    - Starts a new checker job if not running.
+    - Uses `get_watch_service()` to get the singleton instance.
+    - Calls `start_watch_service()` if not already running.
     - Returns the appropriate status response.
 
 ### Testing Strategy

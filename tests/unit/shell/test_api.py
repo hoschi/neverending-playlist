@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from fastapi import HTTPException, Request
@@ -446,3 +446,272 @@ async def test_clear_played_endpoint_unknown_error_500(
         assert content["detail"]["error"] == "unknown_error"
         assert content["detail"]["message"] == "An unknown error occurred."
         assert "Unexpected database connection failure" in content["detail"]["details"]
+
+
+# Clear Played Watchmode API Tests
+@pytest.mark.asyncio
+async def test_clear_played_watchmode_already_active(
+    client: TestClient, mock_spotify_client
+) -> None:
+    """Test GET /clear-played-watchmode returns already_active when checker is running."""
+    from datetime import datetime
+
+    from src.shell.api import app, get_spotify_client
+    from src.shell.state import CheckerState
+
+    # Override the dependency
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+
+    # Mock the global state to simulate already running checker
+    mock_state = CheckerState(
+        is_running=True,
+        retries_left=3,
+        last_playback_detected=True,
+        last_checked=datetime.now(),
+        next_check=datetime.now(),
+    )
+
+    # Mock the global watch service to simulate already running
+    mock_state = CheckerState(
+        is_running=True,
+        retries_left=3,
+        last_playback_detected=True,
+        last_checked=datetime.now(),
+        next_check=datetime.now(),
+    )
+
+    mock_watch_service = MagicMock()
+    mock_watch_service.get_state = AsyncMock(return_value=mock_state)
+
+    with patch("src.shell.api.get_watch_service", return_value=mock_watch_service):
+        response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 200
+    content = response.json()
+    assert content["status"] == "already_active"
+    assert "checker_state" in content
+    assert content["checker_state"]["is_running"] is True
+    assert content["checker_state"]["retries_left"] == 3
+    assert content["checker_state"]["last_playback_detected"] is True
+    assert "last_checked" in content["checker_state"]
+
+    # Clean up
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_clear_played_watchmode_no_active_playback(
+    client: TestClient, mock_spotify_client
+) -> None:
+    """Test GET /clear-played-watchmode returns no_active_playback when no playback detected."""
+    from src.shell.api import app, get_spotify_client
+    from src.shell.state import CheckerState
+
+    # Override the dependency
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+
+    # Mock no active playback
+    mock_spotify_client.get_current_playback.return_value = Success(None)
+
+    mock_state = CheckerState(
+        is_running=False,
+        retries_left=5,
+        last_playback_detected=False,
+        last_checked=None,
+        next_check=None,
+    )
+
+    mock_watch_service = MagicMock()
+    mock_watch_service.get_state = AsyncMock(return_value=mock_state)
+
+    with patch("src.shell.api.get_watch_service", return_value=mock_watch_service):
+        response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 409
+    content = response.json()
+    assert content["status"] == "no_active_playback"
+    assert "No active playback detected" in content["message"]
+    assert "checker_state" in content
+    assert content["checker_state"]["is_running"] is False
+
+    # Clean up
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_clear_played_watchmode_started_successfully(
+    client: TestClient, mock_spotify_client
+) -> None:
+    """Test GET /clear-played-watchmode returns started when successfully activated."""
+    from datetime import datetime
+
+    from src.shell.api import app, get_spotify_client
+    from src.shell.state import CheckerState
+
+    # Override the dependency
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+
+    # Mock active playback
+    mock_spotify_client.get_current_playback.return_value = Success(
+        {
+            "item": {"uri": "spotify:track:current_track"},
+            "context": {"type": "playlist", "uri": "spotify:playlist:test_playlist"},
+        }
+    )
+
+    # Mock initial state (watch service not running)
+    initial_state = CheckerState(
+        is_running=False,
+        retries_left=5,
+        last_playback_detected=False,
+        last_checked=None,
+        next_check=None,
+    )
+
+    # Mock updated state (watch service running)
+    updated_state = CheckerState(
+        is_running=True,
+        retries_left=5,
+        last_playback_detected=True,
+        last_checked=datetime.now(),
+        next_check=datetime.now(),
+    )
+
+    # Mock watch service instance
+    mock_watch_service = MagicMock()
+    mock_watch_service.get_state = AsyncMock(return_value=initial_state)
+    mock_watch_service.start_watch_service = AsyncMock(return_value=updated_state)
+
+    with patch("src.shell.api.get_watch_service", return_value=mock_watch_service):
+        response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 200
+    content = response.json()
+    assert content["status"] == "started"
+    assert "Watchmode activated successfully" in content["message"]
+    assert "checker_state" in content
+    assert content["checker_state"]["is_running"] is True
+    assert content["checker_state"]["retries_left"] == 5
+    assert content["checker_state"]["last_playback_detected"] is True
+    assert "last_checked" in content["checker_state"]
+    assert "next_check" in content["checker_state"]
+
+    # Clean up
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_clear_played_watchmode_start_failed(
+    client: TestClient, mock_spotify_client
+) -> None:
+    """Test GET /clear-played-watchmode returns start_failed when checker fails to start."""
+    from unittest.mock import AsyncMock
+
+    from src.shell.api import app, get_spotify_client
+    from src.shell.state import CheckerState
+
+    # Override the dependency
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+
+    # Mock active playback
+    mock_spotify_client.get_current_playback.return_value = Success(
+        {
+            "item": {"uri": "spotify:track:current_track"},
+            "context": {"type": "playlist", "uri": "spotify:playlist:test_playlist"},
+        }
+    )
+
+    mock_state = CheckerState(
+        is_running=False,
+        retries_left=5,
+        last_playback_detected=False,
+        last_checked=None,
+        next_check=None,
+    )
+
+    # Mock watch service that fails to start
+    mock_watch_service = MagicMock()
+    mock_watch_service.get_state = AsyncMock(return_value=mock_state)
+    mock_watch_service.start_watch_service = AsyncMock(
+        side_effect=Exception("Failed to start checker")
+    )
+
+    with patch("src.shell.api.get_watch_service", return_value=mock_watch_service):
+        response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 500
+    content = response.json()
+    assert content["status"] == "start_failed"
+    assert "Failed to start watchmode" in content["message"]
+    assert "Failed to start checker" in content["details"]
+
+    # Clean up
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_clear_played_watchmode_playback_check_failed(
+    client: TestClient, mock_spotify_client
+) -> None:
+    """Test GET /clear-played-watchmode returns playback_check_failed when API call fails."""
+    from returns.result import Failure
+
+    from src.shell.api import app, get_spotify_client
+    from src.shell.state import CheckerState
+
+    # Override the dependency
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+
+    # Mock failed playback check
+    mock_spotify_client.get_current_playback.return_value = Failure(
+        Exception("Spotify API error")
+    )
+
+    mock_state = CheckerState(
+        is_running=False,
+        retries_left=5,
+        last_playback_detected=False,
+        last_checked=None,
+        next_check=None,
+    )
+
+    mock_watch_service = MagicMock()
+    mock_watch_service.get_state = AsyncMock(return_value=mock_state)
+
+    with patch("src.shell.api.get_watch_service", return_value=mock_watch_service):
+        response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 409
+    content = response.json()
+    assert content["status"] == "playback_check_failed"
+    assert "Failed to check playback status" in content["message"]
+    assert "checker_state" in content
+    assert content["checker_state"]["is_running"] is False
+
+    # Clean up
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_clear_played_watchmode_unexpected_error(
+    client: TestClient, mock_spotify_client
+) -> None:
+    """Test GET /clear-played-watchmode handles unexpected errors gracefully."""
+    from src.shell.api import app, get_spotify_client
+
+    # Override the dependency
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+
+    # Mock unexpected error in get_watch_service
+    with patch(
+        "src.shell.api.get_watch_service", side_effect=Exception("Unexpected error")
+    ):
+        response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 500
+    content = response.json()
+    assert content["status"] == "unexpected_error"
+    assert "An unexpected error occurred" in content["message"]
+
+    # Clean up
+    app.dependency_overrides.clear()
