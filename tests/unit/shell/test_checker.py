@@ -828,3 +828,98 @@ async def test_checker_execute_clear_task_error_retries_exhausted(
 
                 # Verify stop was called due to error retries exhaustion
                 mock_stop.assert_called_once()
+
+
+def test_stop_checker_attribute_assignment_exception(
+    mock_spotify_factory, mock_supabase_factory
+):
+    """Test exception during direct attribute assignment in stop_checker (Zeilen 118-120)."""
+    checker = Checker(mock_spotify_factory, mock_supabase_factory)
+    checker.state.is_running = True
+
+    # Mock the entire state object to raise exception during assignment
+    mock_state = Mock()
+    mock_state.is_running = True
+    mock_state.next_check = datetime.now()
+
+    # Make both attribute assignments fail
+    type(mock_state).is_running = PropertyMock(
+        side_effect=RuntimeError("Attribute assignment failed")
+    )
+    type(mock_state).next_check = PropertyMock(
+        side_effect=RuntimeError("Attribute assignment failed")
+    )
+
+    # Replace the checker's state with the mock
+    checker.state = mock_state
+
+    # Should raise the original exception
+    with pytest.raises(RuntimeError, match="Attribute assignment failed"):
+        checker.stop_checker()
+
+
+def test_stop_checker_next_check_assignment_exception(
+    mock_spotify_factory, mock_supabase_factory
+):
+    """Test exception during next_check attribute assignment (Zeilen 118-120)."""
+    checker = Checker(mock_spotify_factory, mock_supabase_factory)
+    checker.state.is_running = True
+    checker.state.next_check = datetime.now()
+
+    # Mock the entire state object to raise exception during next_check assignment
+    mock_state = Mock()
+    mock_state.is_running = True
+    mock_state.next_check = datetime.now()
+
+    # Make both attribute assignments fail
+    type(mock_state).is_running = PropertyMock(
+        side_effect=ValueError("next_check assignment failed")
+    )
+    type(mock_state).next_check = PropertyMock(
+        side_effect=ValueError("next_check assignment failed")
+    )
+
+    # Replace the checker's state with the mock
+    checker.state = mock_state
+
+    # Should raise the original exception
+    with pytest.raises(ValueError, match="next_check assignment failed"):
+        checker.stop_checker()
+
+
+# Test entfernt, da er nicht sinnvoll implementiert werden kann
+# ohne den zu testenden Code zu mocken, was den Sinn des Tests entbehrt
+
+
+def test_stop_checker_none_state_exception(mock_spotify_factory, mock_supabase_factory):
+    """Test exception when state is None during stop (Zeilen 118-120)."""
+    checker = Checker(mock_spotify_factory, mock_supabase_factory)
+    checker.state.is_running = True
+
+    # Mock the state attribute to return None when accessed
+    with patch.object(checker, "state", None), pytest.raises(AttributeError):
+        # Should raise AttributeError when trying to access state attributes
+        checker.stop_checker()
+
+
+def test_stop_checker_readonly_state_exception(
+    mock_spotify_factory, mock_supabase_factory
+):
+    """Test exception when state is read-only during stop (Zeilen 118-120)."""
+    checker = Checker(mock_spotify_factory, mock_supabase_factory)
+    checker.state.is_running = True
+
+    # Create a mock state that raises AttributeError on assignment
+    mock_state = Mock()
+    mock_state.is_running = True
+    mock_state.next_check = datetime.now()
+    type(mock_state).is_running = PropertyMock(
+        side_effect=AttributeError("can't set attribute 'is_running'")
+    )
+
+    # Replace the checker's state with the mock
+    checker.state = mock_state
+
+    # Should raise the original exception
+    with pytest.raises(AttributeError, match="can't set attribute 'is_running'"):
+        checker.stop_checker()
