@@ -768,3 +768,63 @@ def test_checker_state_serialization(mock_spotify_factory, mock_supabase_factory
 
     assert result["is_running"] is False
     assert result["retries_left"] == 5
+
+
+# Neue Tests für fehlende Code-Pfade
+
+
+def test_checker_stop_checker_exception_handling(
+    mock_spotify_factory, mock_supabase_factory
+):
+    """Test stopping checker handles exceptions gracefully (Zeilen 118-120)."""
+    checker = Checker(mock_spotify_factory, mock_supabase_factory)
+    checker.state.is_running = True
+
+    # Mock state updates to raise exception during stop
+    with patch.object(
+        checker.state, "is_running", new_callable=PropertyMock
+    ) as mock_is_running:
+        mock_is_running.side_effect = Exception("State update failed during stop")
+
+        # Should handle the exception gracefully and still return a valid state
+        result = checker.stop_checker()
+
+        # Verify that the method still returns a valid state despite the exception
+        assert result is not None
+        assert isinstance(result, CheckerState)
+
+
+async def test_checker_execute_clear_task_error_retries_exhausted(
+    mock_spotify_factory, mock_supabase_factory
+):
+    """Test execute clear task when error retries are exhausted (Zeilen 181-182)."""
+    checker = Checker(mock_spotify_factory, mock_supabase_factory)
+    checker.state.is_running = True
+    checker.state.retries_left = 1  # Only 1 retry left
+
+    # Mock active playback
+    mock_spotify_factory.return_value.get_current_playback.return_value = Success(
+        {"is_playing": True}
+    )
+
+    # Mock settings
+    with patch("src.shell.checker.get_settings") as mock_get_settings:
+        mock_settings = Mock()
+        mock_settings.spotify_playlist_id = "test_playlist"
+        mock_settings.playlist_autofill_count = 150
+        mock_get_settings.return_value = mock_settings
+
+        # Mock clear_played_tracks_from_playlist to raise exception
+        with patch("src.shell.checker.clear_played_tracks_from_playlist") as mock_clear:
+            mock_clear.side_effect = Exception("Clear operation failed")
+
+            # Mock stop_checker to verify it gets called when retries exhausted
+            with patch.object(checker, "stop_checker") as mock_stop:
+                # Execute clear task
+                await checker._execute_clear_task()
+
+                # Verify retries were decremented
+                assert checker.state.retries_left == 0
+
+                # Verify stop was called due to error retries exhaustion
+                mock_stop.assert_called_once()

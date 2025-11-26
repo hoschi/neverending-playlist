@@ -5,7 +5,7 @@ played tracks from playlists every 10 minutes using asyncio.
 """
 
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from loguru import logger
 from pydantic import BaseModel
@@ -85,7 +85,7 @@ class Checker:
 
             # Schedule the background task
             self.state.is_running = True
-            self.state.next_check = datetime.utcnow() + timedelta(minutes=10)
+            self.state.next_check = datetime.now(UTC) + timedelta(minutes=10)
 
             logger.info("Checker started successfully with dramatiq")
 
@@ -142,7 +142,7 @@ class Checker:
             logger.info("Executing clear played tracks background task")
 
             # Update last checked timestamp
-            self.state.last_checked = datetime.utcnow()
+            self.state.last_checked = datetime.now(UTC)
 
             # Check for active playback
             active_playback = await self._check_active_playback()
@@ -169,7 +169,7 @@ class Checker:
             self.state.retries_left = 5
 
             # Schedule next check
-            self.state.next_check = datetime.utcnow() + timedelta(minutes=10)
+            self.state.next_check = datetime.now(UTC) + timedelta(minutes=10)
 
             logger.info("Background task completed successfully")
 

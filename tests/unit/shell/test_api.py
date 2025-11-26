@@ -1,5 +1,6 @@
 """Fixed API Tests with proper mocking strategy."""
 
+from datetime import UTC
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -634,7 +635,7 @@ async def test_clear_played_watchmode_executed_successfully(
         mock_started_state_instance = AsyncMock()
         mock_started_state_instance.is_running = True
         mock_started_state_instance.retries_left = 5
-        mock_started_state_instance.next_check = datetime.utcnow() + timedelta(
+        mock_started_state_instance.next_check = datetime.now(UTC) + timedelta(
             minutes=10
         )
         mock_watch_service_instance.start_watch_service.return_value = (
@@ -769,7 +770,7 @@ async def test_watchmode_endpoint_already_running_returns_200(
         mock_state = AsyncMock()
         mock_state.is_running = True
         mock_state.retries_left = 3
-        mock_state.next_check = datetime.utcnow() + timedelta(minutes=10)
+        mock_state.next_check = datetime.now(UTC) + timedelta(minutes=10)
         mock_watch_service_instance.get_state.return_value = mock_state
 
         mock_watch_service.return_value = mock_watch_service_instance
@@ -929,3 +930,84 @@ async def test_watchmode_endpoint_playback_inactive_during_startup_409(
     content = response.json()
     assert content["status"] == "playback_inactive"
     assert "No active playback detected" in content["message"]
+
+
+# Neue Tests für fehlende Code-Pfade
+
+
+async def test_watchmode_endpoint_state_inconsistency_after_start(
+    client: TestClient, mock_spotify_client: Mock
+) -> None:
+    """Test watchmode endpoint returns 500 for state inconsistency after start (Zeile 347)."""
+
+    from src.shell.api import app, get_spotify_client, get_supabase_client
+
+    # Override dependencies
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+
+    # Mock active playback
+    mock_spotify_client.get_current_playback.return_value = Success(
+        {"is_playing": True}
+    )
+
+    with patch("src.shell.api.watch_service") as mock_watch_service:
+        # Mock watch service instance
+        mock_watch_service_instance = AsyncMock()
+
+        # Mock state where is_running=True but next_check=None after start (inconsistent state)
+        mock_state = AsyncMock()
+        mock_state.is_running = True
+        mock_state.retries_left = 5
+        mock_state.next_check = None  # Inconsistent state after start!
+        mock_watch_service_instance.get_state.return_value = mock_state
+
+        # Mock start_watch_service to return inconsistent state
+        mock_started_state = AsyncMock()
+        mock_started_state.is_running = True
+        mock_started_state.retries_left = 5
+        mock_started_state.next_check = None  # Inconsistent state!
+        mock_watch_service_instance.start_watch_service.return_value = (
+            mock_started_state
+        )
+
+        mock_watch_service.return_value = mock_watch_service_instance
+
+        response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 500
+    content = response.json()
+    assert "internal_state_inconsistent" in str(content)
+    assert "next_check is None while monitoring is active" in str(content)
+
+
+async def test_watchmode_endpoint_top_level_exception_handling(
+    client: TestClient, mock_spotify_client: Mock
+) -> None:
+    """Test watchmode endpoint top-level exception handling (Zeilen 406-408)."""
+    from src.shell.api import app, get_spotify_client, get_supabase_client
+
+    # Override dependencies
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+
+    # Mock active playback
+    mock_spotify_client.get_current_playback.return_value = Success(
+        {"is_playing": True}
+    )
+
+    with patch("src.shell.api.watch_service") as mock_watch_service:
+        # Mock watch service to raise a more general exception that should be caught by top-level handler
+        mock_watch_service.side_effect = RuntimeError(
+            "Unexpected service initialization error"
+        )
+
+        response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 500
+    content = response.json()
+    assert "service_error" in str(content)
+    assert "Error accessing watch service" in str(content)
+
+    # Clean up
+    app.dependency_overrides.clear()
