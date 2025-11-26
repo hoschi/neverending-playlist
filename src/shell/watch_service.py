@@ -6,7 +6,6 @@ Löschen von abgespielten Tracks aus Playlists alle 10 Minuten mit asyncio.
 
 import asyncio
 import contextlib
-from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
 from loguru import logger

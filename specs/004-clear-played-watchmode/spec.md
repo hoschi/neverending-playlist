@@ -1,6 +1,6 @@
 # Feature Specification: Clear Played Watchmode
 
-**Feature Branch**: `001-clear-played-watchmode`
+**Feature Branch**: `004-clear-played-watchmode`
 **Created**: 2025-11-21
 **Status**: Draft
 **Input**: User description: "ein weiterer endpunkt `clear-played-watchmode` soll hinzugefügt werden. Dieser installiert einen "Checker" der das aktive playback überwacht und alle 10 min immer wieder automatisch die playlist cleared."

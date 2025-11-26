@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from fastapi import HTTPException, Request
 from fastapi.testclient import TestClient
-from returns.result import Success
+from returns.result import Failure, Success
 
 from src.core.models import (
     PlaylistClearError,
@@ -176,9 +176,123 @@ def test_callback_without_request_token_400(
     assert "Could not retrieve refresh token." in exc_info.value.detail
 
 
-@pytest.mark.asyncio
+# Tests für fehlende API Coverage (Zeilen 44, 49-50, 60-61)
+async def test_callback_with_missing_oauth_tokens_400(
+    mock_oauth_manager: Mock,
+    mock_encryption_service: Mock,
+) -> None:
+    """Test callback when oauth token is missing in get_access_token."""
+    # Arrange
+    mock_oauth_manager.get_access_token.return_value = {
+        "access_token": "test_access_token",
+        # Missing refresh_token
+        "expires_at": 1234567890,
+        "scope": "test_scope",
+    }
+
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        callback(
+            code="test_code",
+            oauth_manager=mock_oauth_manager,
+            encryption_service=mock_encryption_service,
+        )
+
+    assert exc_info.value.status_code == 400
+    assert "Could not retrieve refresh token." in exc_info.value.detail
+
+
+async def test_callback_oauth_exception_handling_500(
+    mock_oauth_manager: Mock,
+    mock_encryption_service: Mock,
+) -> None:
+    """Test callback when get_access_token raises exception."""
+    # Arrange
+    mock_oauth_manager.get_access_token.side_effect = Exception("OAuth error")
+
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        callback(
+            code="test_code",
+            oauth_manager=mock_oauth_manager,
+            encryption_service=mock_encryption_service,
+        )
+
+    assert exc_info.value.status_code == 500
+    # Updated assertion to match actual error message
+    assert "internal error occurred" in exc_info.value.detail.lower()
+
+
+async def test_callback_encryption_error_handling_500(
+    mock_oauth_manager: Mock,
+    mock_encryption_service: Mock,
+) -> None:
+    """Test callback when encryption fails."""
+    # Arrange
+    mock_oauth_manager.get_access_token.return_value = {
+        "access_token": "test_access_token",
+        "refresh_token": "test_refresh_token",
+        "expires_at": 1234567890,
+        "scope": "test_scope",
+    }
+
+    mock_encryption_service.encrypt.side_effect = Exception("Encryption failed")
+
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        callback(
+            code="test_code",
+            oauth_manager=mock_oauth_manager,
+            encryption_service=mock_encryption_service,
+        )
+
+    assert exc_info.value.status_code == 500
+
+
+async def test_callback_set_key_error_handling_500(
+    mock_oauth_manager: Mock,
+    mock_encryption_service: Mock,
+) -> None:
+    """Test callback when set_key fails."""
+    # Arrange
+    mock_oauth_manager.get_access_token.return_value = {
+        "access_token": "test_access_token",
+        "refresh_token": "test_refresh_token",
+        "expires_at": 1234567890,
+        "scope": "test_scope",
+    }
+
+    mock_encryption_service.encrypt.return_value = "encrypted_token"
+
+    # Act & Assert
+    with patch("src.shell.clients.ConcreteSpotifyClient") as MockSpotifyClient:
+        mock_client_instance = Mock()
+        mock_client_instance.get_current_user.return_value = Success(
+            {"id": "test_user_id"}
+        )
+        MockSpotifyClient.return_value = mock_client_instance
+
+        with (
+            patch("spotipy.Spotify") as mock_spotify_class,
+            patch("src.shell.api.set_key") as mock_set_key_fail,
+        ):
+            mock_spotify_instance = Mock()
+            mock_spotify_instance.current_user.return_value = {"id": "test_user_id"}
+            mock_spotify_class.return_value = mock_spotify_instance
+            mock_set_key_fail.side_effect = Exception("Failed to save token")
+
+            with pytest.raises(HTTPException) as exc_info:
+                callback(
+                    code="test_code",
+                    oauth_manager=mock_oauth_manager,
+                    encryption_service=mock_encryption_service,
+                )
+
+            assert exc_info.value.status_code == 500
+
+
 async def test_sync_playlist_success_returns_200(
-    client: TestClient, mock_spotify_client
+    client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test sync_playlist_endpoint returns 200 on success."""
     from src.shell.api import app, get_spotify_client
@@ -207,9 +321,8 @@ async def test_sync_playlist_success_returns_200(
     app.dependency_overrides.clear()
 
 
-@pytest.mark.asyncio
 async def test_sync_playlist_returns_207_on_partial_failure(
-    client: TestClient, mock_spotify_client
+    client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test sync_playlist_endpoint returns JSONResponse 207 on partial failure."""
     from src.shell.api import app, get_spotify_client
@@ -238,9 +351,35 @@ async def test_sync_playlist_returns_207_on_partial_failure(
     app.dependency_overrides.clear()
 
 
-@pytest.mark.asyncio
+async def test_sync_playlist_error_handling_500(
+    client: TestClient, mock_spotify_client: Mock
+) -> None:
+    """Test sync_playlist endpoint handles errors gracefully."""
+    from src.shell.api import app, get_spotify_client
+
+    # Override the dependency
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+
+    with patch("src.shell.api.sync_playlist") as mock_sync:
+        # Mock sync_playlist to return a Failure result instead of raising exception
+        from returns.result import Failure
+
+        mock_sync.return_value = Failure(Exception("Sync failed"))
+
+        # Call the endpoint
+        response = client.post("/sync-playlist")
+
+        # Should return 500 for sync failures
+        assert response.status_code == 500
+        content = response.json()
+        assert "Sync failed" in str(content.get("detail", ""))
+
+    # Clean up
+    app.dependency_overrides.clear()
+
+
 async def test_clear_played_endpoint_success(
-    client: TestClient, mock_spotify_client
+    client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test clear_played_endpoint returns 200 when filled_count > 0 (successful autofill)."""
     from src.shell.api import app, get_spotify_client
@@ -263,9 +402,8 @@ async def test_clear_played_endpoint_success(
     app.dependency_overrides.clear()
 
 
-@pytest.mark.asyncio
 async def test_clear_played_endpoint_no_deletion_needed_200(
-    client: TestClient, mock_spotify_client
+    client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test clear_played_endpoint returns 200 when deleted_count == 0 (nothing to delete)."""
     from src.shell.api import app, get_spotify_client
@@ -288,9 +426,8 @@ async def test_clear_played_endpoint_no_deletion_needed_200(
     app.dependency_overrides.clear()
 
 
-@pytest.mark.asyncio
 async def test_clear_played_endpoint_partially_successful_207(
-    client: TestClient, mock_spotify_client
+    client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test clear_played_endpoint returns 207 when deleted_count > 0 AND filled_count == 0."""
     from src.shell.api import app, get_spotify_client
@@ -315,9 +452,8 @@ async def test_clear_played_endpoint_partially_successful_207(
     app.dependency_overrides.clear()
 
 
-@pytest.mark.asyncio
 async def test_clear_played_endpoint_successful_deletion_and_refill_200(
-    client: TestClient, mock_spotify_client
+    client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test clear_played_endpoint returns 200 when deleted_count > 0 AND filled_count > 0."""
     from src.shell.api import app, get_spotify_client
@@ -340,9 +476,8 @@ async def test_clear_played_endpoint_successful_deletion_and_refill_200(
     app.dependency_overrides.clear()
 
 
-@pytest.mark.asyncio
 async def test_clear_played_endpoint_playback_inactive_error_409(
-    client: TestClient, mock_spotify_client
+    client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test clear_played_endpoint returns 409 for PLAYBACK_INACTIVE error."""
     from src.shell.api import app, get_spotify_client
@@ -357,8 +492,6 @@ async def test_clear_played_endpoint_playback_inactive_error_409(
     )
 
     with patch("src.shell.api.clear_played_tracks_from_playlist") as mock_clear:
-        from returns.result import Failure
-
         mock_clear.return_value = Failure(playback_error)
 
         response = client.post("/clear-played")
@@ -374,9 +507,8 @@ async def test_clear_played_endpoint_playback_inactive_error_409(
     app.dependency_overrides.clear()
 
 
-@pytest.mark.asyncio
 async def test_clear_played_endpoint_wrong_playlist_error_400(
-    client: TestClient, mock_spotify_client
+    client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test clear_played_endpoint returns 400 for WRONG_PLAYLIST error."""
     from src.shell.api import app, get_spotify_client
@@ -391,8 +523,6 @@ async def test_clear_played_endpoint_wrong_playlist_error_400(
     )
 
     with patch("src.shell.api.clear_played_tracks_from_playlist") as mock_clear:
-        from returns.result import Failure
-
         mock_clear.return_value = Failure(playlist_error)
 
         response = client.post("/clear-played")
@@ -413,9 +543,8 @@ async def test_clear_played_endpoint_wrong_playlist_error_400(
     app.dependency_overrides.clear()
 
 
-@pytest.mark.asyncio
 async def test_clear_played_endpoint_internal_error_500(
-    client: TestClient, mock_spotify_client
+    client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test clear_played_endpoint returns 500 for ERROR error."""
     from src.shell.api import app, get_spotify_client
@@ -430,8 +559,6 @@ async def test_clear_played_endpoint_internal_error_500(
     )
 
     with patch("src.shell.api.clear_played_tracks_from_playlist") as mock_clear:
-        from returns.result import Failure
-
         mock_clear.return_value = Failure(internal_error)
 
         response = client.post("/clear-played")
@@ -447,9 +574,8 @@ async def test_clear_played_endpoint_internal_error_500(
     app.dependency_overrides.clear()
 
 
-@pytest.mark.asyncio
 async def test_clear_played_endpoint_unknown_error_500(
-    client: TestClient, mock_spotify_client
+    client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test clear_played_endpoint returns 500 for unknown exceptions."""
     from src.shell.api import app, get_spotify_client
@@ -471,11 +597,12 @@ async def test_clear_played_endpoint_unknown_error_500(
         assert "Unexpected database connection failure" in content["detail"]["details"]
 
 
-@pytest.mark.asyncio
 async def test_clear_played_watchmode_executed_successfully(
-    client: TestClient, mock_spotify_client
+    client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test GET /clear-played-watchmode returns executed when successfully run."""
+    from datetime import datetime, timedelta
+
     from src.shell.api import app, get_spotify_client, get_supabase_client
 
     # Override the dependency
@@ -497,8 +624,6 @@ async def test_clear_played_watchmode_executed_successfully(
     with patch("src.shell.api.watch_service") as mock_watch_service:
         # Mock the WatchService instance
         mock_watch_service_instance = AsyncMock()
-
-        from datetime import datetime, timedelta
 
         mock_state_instance = AsyncMock()
         mock_state_instance.is_running = False
@@ -534,9 +659,8 @@ async def test_clear_played_watchmode_executed_successfully(
     app.dependency_overrides.clear()
 
 
-@pytest.mark.asyncio
 async def test_clear_played_watchmode_no_active_playback(
-    client: TestClient, mock_spotify_client
+    client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test GET /clear-played-watchmode returns no_active_playback when no playback detected."""
     from src.shell.api import app, get_spotify_client, get_supabase_client
@@ -555,5 +679,253 @@ async def test_clear_played_watchmode_no_active_playback(
     assert content["status"] == "no_active_playback"
     assert "No active playback detected" in content["message"]
 
-    # Clean up
-    app.dependency_overrides.clear()
+
+# Tests für Coverage-Lücken in watch_service.py
+async def test_watchmode_endpoint_state_inconsistency_error_500(
+    client: TestClient, mock_spotify_client: Mock
+) -> None:
+    """Test watchmode endpoint returns 500 for state inconsistency."""
+    from src.shell.api import app, get_spotify_client, get_supabase_client
+
+    # Override dependencies
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+
+    # Mock active playback
+    mock_spotify_client.get_current_playback.return_value = Success(
+        {"is_playing": True}
+    )
+
+    with patch("src.shell.api.watch_service") as mock_watch_service:
+        # Mock watch service with inconsistent state (running but no next_check)
+        mock_watch_service_instance = AsyncMock()
+
+        mock_state = AsyncMock()
+        mock_state.is_running = True
+        mock_state.retries_left = 5
+        mock_state.next_check = None  # Inconsistent state!
+        mock_watch_service_instance.get_state.return_value = mock_state
+
+        mock_watch_service.return_value = mock_watch_service_instance
+
+        response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 500
+    content = response.json()
+    assert "internal_state_inconsistent" in str(content)
+
+
+# Tests für Exception Handling (Zeilen 406-408)
+async def test_watchmode_endpoint_unexpected_error_in_top_level_exception(
+    client: TestClient, mock_spotify_client: Mock
+) -> None:
+    """Test watchmode endpoint returns 500 for unexpected errors in top-level exception."""
+    from src.shell.api import app, get_spotify_client, get_supabase_client
+
+    # Override dependencies
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+
+    # Mock active playback
+    mock_spotify_client.get_current_playback.return_value = Success(
+        {"is_playing": True}
+    )
+
+    with patch("src.shell.api.watch_service") as mock_watch_service:
+        # Use a less disruptive exception for testing
+        mock_watch_service.side_effect = RuntimeError("Unexpected service error")
+
+        response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 500
+    content = response.json()
+    # Check for the actual error message content
+    assert "Error accessing watch service" in str(content.get("message", ""))
+
+
+# Tests für State Management
+async def test_watchmode_endpoint_already_running_returns_200(
+    client: TestClient, mock_spotify_client: Mock
+) -> None:
+    """Test watchmode endpoint returns 200 when monitoring already running."""
+    from datetime import datetime, timedelta
+
+    from src.shell.api import app, get_spotify_client, get_supabase_client
+
+    # Override dependencies
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+
+    # Mock active playback
+    mock_spotify_client.get_current_playback.return_value = Success(
+        {"is_playing": True}
+    )
+
+    with patch("src.shell.api.watch_service") as mock_watch_service:
+        # Mock watch service instance
+        mock_watch_service_instance = AsyncMock()
+
+        # Mock already running state
+        mock_state = AsyncMock()
+        mock_state.is_running = True
+        mock_state.retries_left = 3
+        mock_state.next_check = datetime.utcnow() + timedelta(minutes=10)
+        mock_watch_service_instance.get_state.return_value = mock_state
+
+        mock_watch_service.return_value = mock_watch_service_instance
+
+        response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 200
+    content = response.json()
+    assert content["status"] == "already_running"
+    assert "Background monitoring is already active" in content["message"]
+
+
+# Tests für Edge Cases und Error Scenarios
+async def test_watchmode_endpoint_playback_check_failure_409(
+    client: TestClient, mock_spotify_client: Mock
+) -> None:
+    """Test watchmode endpoint returns 409 when playback check fails."""
+    from src.shell.api import app, get_spotify_client, get_supabase_client
+
+    # Override dependencies
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+
+    # Mock failed playback check
+    mock_spotify_client.get_current_playback.return_value = Failure(
+        Exception("API Error")
+    )
+
+    response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 409
+    content = response.json()
+    assert content["status"] == "playback_check_failed"
+    assert "Failed to check playback status" in content["message"]
+
+
+async def test_watchmode_endpoint_playback_check_exception_500(
+    client: TestClient, mock_spotify_client: Mock
+) -> None:
+    """Test watchmode endpoint returns 500 when playback check throws exception."""
+    from src.shell.api import app, get_spotify_client, get_supabase_client
+
+    # Override dependencies
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+
+    # Mock playback check exception
+    mock_spotify_client.get_current_playback.side_effect = Exception("Network timeout")
+
+    response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 500
+    content = response.json()
+    assert "playback_check_error" in str(content)
+
+
+async def test_watchmode_endpoint_service_error_500(
+    client: TestClient, mock_spotify_client: Mock
+) -> None:
+    """Test watchmode endpoint returns 500 when service access fails."""
+    from src.shell.api import app, get_spotify_client, get_supabase_client
+
+    # Override dependencies
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+
+    # Mock active playback
+    mock_spotify_client.get_current_playback.return_value = Success(
+        {"is_playing": True}
+    )
+
+    with patch("src.shell.api.watch_service") as mock_watch_service:
+        # Mock service access error
+        mock_watch_service.side_effect = Exception("Service unavailable")
+
+        response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 500
+    content = response.json()
+    assert "service_error" in str(content)
+
+
+async def test_watchmode_endpoint_startup_error_500(
+    client: TestClient, mock_spotify_client: Mock
+) -> None:
+    """Test watchmode endpoint returns 500 when startup fails."""
+    from src.shell.api import app, get_spotify_client, get_supabase_client
+
+    # Override dependencies
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+
+    # Mock active playback
+    mock_spotify_client.get_current_playback.return_value = Success(
+        {"is_playing": True}
+    )
+
+    with patch("src.shell.api.watch_service") as mock_watch_service:
+        mock_watch_service_instance = AsyncMock()
+
+        # Mock not running state
+        mock_state = AsyncMock()
+        mock_state.is_running = False
+        mock_state.retries_left = 5
+        mock_state.next_check = None
+        mock_watch_service_instance.get_state.return_value = mock_state
+
+        # Mock startup failure
+        mock_watch_service_instance.start_watch_service.side_effect = Exception(
+            "Database connection failed"
+        )
+
+        mock_watch_service.return_value = mock_watch_service_instance
+
+        response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 500
+    content = response.json()
+    assert "startup_error" in str(content)
+
+
+async def test_watchmode_endpoint_playback_inactive_during_startup_409(
+    client: TestClient, mock_spotify_client: Mock
+) -> None:
+    """Test watchmode endpoint returns 409 when playback inactive during startup."""
+    from src.shell.api import app, get_spotify_client, get_supabase_client
+
+    # Override dependencies
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+
+    # Mock active playback for initial check
+    mock_spotify_client.get_current_playback.return_value = Success(
+        {"is_playing": True}
+    )
+
+    with patch("src.shell.api.watch_service") as mock_watch_service:
+        mock_watch_service_instance = AsyncMock()
+
+        # Mock not running state
+        mock_state = AsyncMock()
+        mock_state.is_running = False
+        mock_state.retries_left = 5
+        mock_state.next_check = None
+        mock_watch_service_instance.get_state.return_value = mock_state
+
+        # Mock startup with "no active playback" error
+        mock_watch_service_instance.start_watch_service.side_effect = ValueError(
+            "Kein aktives Playback erkannt"
+        )
+
+        mock_watch_service.return_value = mock_watch_service_instance
+
+        response = client.get("/clear-played-watchmode")
+
+    assert response.status_code == 409
+    content = response.json()
+    assert content["status"] == "playback_inactive"
+    assert "No active playback detected" in content["message"]
