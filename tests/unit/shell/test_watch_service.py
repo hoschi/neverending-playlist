@@ -1,4 +1,18 @@
-"""Comprehensive tests for WatchService to achieve full coverage."""
+"""Comprehensive tests for WatchService to achieve full coverage.
+
+TESTING NOTES:
+- This test suite contains tests for the WatchService background task functionality
+- Some tests mock the _watch_loop() method which contains an infinite loop with 10-minute timeouts
+- When testing _watch_loop() directly, ensure proper shutdown event handling to avoid hanging tests
+- The watch loop runs indefinitely until shutdown_event.is_set() is called
+- Timeout tests use reduced timeouts (1 second instead of 600 seconds) for faster test execution
+- Always set shutdown_event in tests that start the watch loop to prevent infinite waiting
+
+COMMON ISSUES:
+- Hanging tests: Caused by _watch_loop() not receiving shutdown signal
+- Long test duration: Fixed by reducing timeout values in test mocks
+- Resource exhaustion: Prevented by proper task cancellation and event setting
+"""
 
 import asyncio
 import contextlib
