@@ -1005,3 +1005,87 @@ async def test_watchmode_endpoint_state_inconsistency_after_start_corrected(
     # and returns a JSONResponse with startup_error status
     assert content["status"] == "startup_error"
     assert "Error starting background monitoring" in content["message"]
+
+
+async def test_watchmode_endpoint_unexpected_error_handling(
+    client: TestClient, mock_spotify_client: Mock
+) -> None:
+    """Test watchmode endpoint handles truly unexpected errors in top-level exception handler (ZEILEN 406-415)."""
+
+    from returns.result import Success
+
+    from src.shell.api import app, get_spotify_client
+
+    # Override dependencies
+    app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
+
+    # Mock successful playback check that will pass the first try-catch block
+    mock_spotify_client.get_current_playback.return_value = Success(
+        {"is_playing": True}
+    )
+
+    # Mock watch_service instance to succeed completely but then raise error
+    # in the JSONResponse constructor (after Zeile 367, outside all try-catch blocks)
+    with patch("src.shell.api.watch_service") as mock_watch_service:
+        mock_watch_service_instance = Mock()
+
+        # Mock state objects
+        mock_state = Mock()
+        mock_state.is_running = False
+        mock_state.retries_left = 5
+        mock_state.next_check = None
+
+        mock_started_state = Mock()
+        mock_started_state.is_running = True
+        mock_started_state.retries_left = 5
+        mock_started_state.next_check = "2024-01-01T10:00:00Z"
+
+        # Mock the methods to return successful results
+        mock_watch_service_instance.get_state.return_value = mock_state
+        mock_watch_service_instance.start_watch_service.return_value = (
+            mock_started_state
+        )
+
+        mock_watch_service.return_value = mock_watch_service_instance
+
+        # Mock JSONResponse to raise error AFTER successful processing
+        # This will occur after the last try-catch block (Zeile 367), in the top-level handler
+        with patch("src.shell.api.JSONResponse") as mock_json_response:
+            mock_json_response.side_effect = RuntimeError(
+                "System crash - completely unexpected error that bypasses all handlers"
+            )
+
+            response = client.get("/clear-played-watchmode")
+
+            # Expected: 500 with unexpected_error status from top-level exception handler (Zeilen 408-415)
+            assert response.status_code == 500
+            content = response.json()
+            assert content["status"] == "unexpected_error"
+            assert content["message"] == "An unexpected error occurred"
+            # The RuntimeError from the Mock will be in the details
+            assert (
+                "System crash - completely unexpected error that bypasses all handlers"
+                in content["details"]
+            )
+
+
+async def test_watchmode_endpoint_top_level_exception_handler_exists():
+    """Test that the top-level exception handler exists in the watchmode endpoint (ZEILEN 406-415)."""
+
+    # This test documents that the top-level exception handler exists
+    # and would catch any exceptions that bypass all inner try-catch blocks
+    import inspect
+
+    import src.shell.api
+
+    # Get the source code of the clear_played_watchmode_endpoint function
+    source = inspect.getsource(src.shell.api.clear_played_watchmode_endpoint)
+
+    # Verify that the top-level exception handler exists
+    assert "except Exception as e:" in source
+    assert "Unexpected error in watchmode endpoint" in source
+    assert "unexpected_error" in source
+    assert "An unexpected error occurred" in source
+
+    # This test ensures the code path exists and is properly structured
+    # Even though it's difficult to trigger in tests, it's important for production safety

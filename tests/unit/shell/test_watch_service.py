@@ -1222,3 +1222,38 @@ async def test_watch_service_watch_loop_mixed_scenarios(watch_service_instance):
         # Verify at least one iteration was executed
         assert iteration_count >= 1
         assert mock_execute.call_count >= 1
+
+
+async def test_watch_service_watch_loop_timeout_error_handling(watch_service_instance):
+    """Test watch loop handles TimeoutError and continues (Zeilen 187-188)."""
+    # Mock execute_clear_task to run successfully
+    with patch.object(
+        watch_service_instance, "_execute_clear_task", new_callable=AsyncMock
+    ) as mock_execute:
+        mock_execute.return_value = None
+
+        call_count = 0
+
+        def wait_side_effect():
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # First call: TimeoutError occurs, should continue
+                raise TimeoutError()
+            else:
+                # Second call: shutdown event is set, should break
+                watch_service_instance._shutdown_event.set()
+                return None
+
+        # Mock the shutdown event wait method
+        with patch.object(watch_service_instance._shutdown_event, "wait") as mock_wait:
+            mock_wait.side_effect = wait_side_effect
+
+            # Run watch loop
+            await watch_service_instance._watch_loop()
+
+            # Verify execute_clear_task was called once (before timeout)
+            assert mock_execute.call_count >= 1
+
+            # Verify wait was called at least twice
+            assert mock_wait.call_count >= 2
