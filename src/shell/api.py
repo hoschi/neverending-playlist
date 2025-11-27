@@ -1,4 +1,4 @@
-"""FastAPI API for Supabase to Spotify application.
+"""FastAPI API for Neverending Playlist application.
 
 This module contains all API endpoints and the FastAPI application configuration.
 """

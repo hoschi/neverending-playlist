@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: Supabase to Spotify API Extension
+  title: Neverending Playlist API Extension
   version: 1.0.0
 paths:
   /clear-played-watchmode:
