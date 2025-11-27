@@ -1,7 +1,7 @@
 """In-Memory WatchService für Clear Played Watchmode Funktionalität.
 
-Dieses Modul implementiert die Background Task Verwaltung für das automatische
-Löschen von abgespielten Tracks aus Playlists mit konfigurierbarer Intervallzeit mit asyncio.
+This module implements the Background Task Management for the automatic
+removal of played tracks from playlists with configurable interval timing using asyncio.
 """
 
 import asyncio
@@ -30,8 +30,8 @@ from src.shell.state import (
 class WatchService:
     """In-Memory WatchService für Clear Played Watchmode.
 
-    Verwaltet State und Ausführung der automatischen Playlist-Clearing
-    Funktionalität, die mit konfigurierbarem Intervall mit asyncio Tasks läuft.
+    Manages state and execution of the automatic Playlist-Clearing
+    functionality that runs with configurable intervals using asyncio tasks.
     """
 
     def __init__(
@@ -51,33 +51,33 @@ class WatchService:
         self._shutdown_event = asyncio.Event()
 
     async def start_watch_service(self) -> CheckerState:
-        """Startet den Background WatchService Task.
+        """Starts the Background WatchService Task.
 
-        Initiiert den wiederkehrenden Background Task, der nach aktivem Playback
-        überwacht und automatisch abgespielte Tracks aus der Playlist in konfigurierbaren Intervallen löscht.
+        Initializes the recurring background task that monitors for active playback
+        and automatically removes played tracks from the playlist in configurable intervals.
 
         Returns:
-            CheckerState: Der aktuelle State des WatchService nach dem Start
+            CheckerState: The current state of the WatchService after starting
         """
         current_state = await get_checker_state()
 
         if current_state.is_running:
-            logger.info("WatchService läuft bereits, gebe aktuellen State zurück")
+            logger.info("WatchService already running, returning current state")
             return current_state
 
         try:
-            # Prüfe auf aktives Playback vor dem Start
+            # Check for active playback before starting
             if not await self._check_active_playback():
                 new_retries_left = max(0, current_state.retries_left - 1)
                 await update_checker_state(retries_left=new_retries_left)
 
                 if current_state.retries_left <= 1:
                     raise ValueError(
-                        "Kein aktives Playback erkannt. WatchService nicht gestartet."
+                        "No active playback detected. WatchService not started."
                     )
                 else:
                     logger.warning(
-                        f"Kein aktives Playback erkannt. Verbleibende Versuche: {new_retries_left}"
+                        f"No active playback detected. Retries left: {new_retries_left}"
                     )
                     return await get_checker_state()
 
@@ -91,7 +91,7 @@ class WatchService:
                 + timedelta(minutes=settings.watch_service_timeout_minutes),
             )
 
-            logger.info("WatchService erfolgreich mit asyncio gestartet")
+            logger.info("WatchService successfully started with asyncio")
 
             # Starte Background Task
             self._task = asyncio.create_task(self._watch_loop())
@@ -99,20 +99,20 @@ class WatchService:
             return await get_checker_state()
 
         except Exception as e:
-            logger.error(f"Fehler beim Starten des WatchService: {e}")
+            logger.error(f"Error starting WatchService: {e}")
             await update_checker_state(is_running=False)
             raise
 
     async def stop_watch_service(self) -> CheckerState:
-        """Stoppt den Background WatchService Task.
+        """Stops the Background WatchService Task.
 
         Returns:
-            CheckerState: Der aktuelle State des WatchService nach dem Stoppen
+            CheckerState: The current state of the WatchService after stopping
         """
         current_state = await get_checker_state()
 
         if not current_state.is_running:
-            logger.info("WatchService läuft nicht")
+            logger.info("WatchService not running")
             return current_state
 
         try:
@@ -127,27 +127,27 @@ class WatchService:
             # Setze State auf "gestoppt"
             await update_checker_state(is_running=False, next_check=None)
 
-            logger.info("WatchService erfolgreich gestoppt")
+            logger.info("WatchService stopped successfully")
 
         except Exception as e:
-            logger.error(f"Fehler beim Stoppen des WatchService: {e}")
+            logger.error(f"Error stopping WatchService: {e}")
             raise
 
         return await get_checker_state()
 
     async def get_state(self) -> CheckerState:
-        """Gibt den aktuellen WatchService State zurück.
+        """Returns the current WatchService State.
 
         Returns:
-            CheckerState: Der aktuelle State des WatchService
+            CheckerState: The current state of the WatchService
         """
         return await get_checker_state()
 
     async def reset_state(self) -> CheckerState:
-        """Setzt den WatchService State auf Standardwerte zurück.
+        """Resets the WatchService State to default values.
 
         Returns:
-            CheckerState: Der zurückgesetzte WatchService State
+            CheckerState: The reset WatchService state
         """
         # Reset shutdown event
         self._shutdown_event.clear()
@@ -166,14 +166,14 @@ class WatchService:
     async def _watch_loop(self) -> None:
         """Haupt-Loop für den WatchService Background Task.
 
-        Diese Funktion läuft kontinuierlich und:
-        1. Prüft auf aktives Playback
-        2. Ruft die bestehende clear_played_tracks_from_playlist Logik auf
-        3. Aktualisiert den WatchService State basierend auf Ergebnissen
-        4. Behandelt Wiederholungsversuche und Stopp-Bedingungen
-        5. Wartet konfigurierbare Zeit vor dem nächsten Durchlauf
+        This function runs continuously and:
+        1. Checks for active playback
+        2. Calls the existing clear_played_tracks_from_playlist logic
+        3. Updates the WatchService state based on results
+        4. Handles retry attempts and stop conditions
+        5. Waits configurable time before next iteration
         """
-        logger.info("WatchService Background Task gestartet")
+        logger.info("WatchService Background Task started")
 
         try:
             while not self._shutdown_event.is_set():
@@ -192,43 +192,43 @@ class WatchService:
                     continue  # 10 Minuten vorbei, nächster Durchlauf
 
         except asyncio.CancelledError:
-            logger.info("WatchService Background Task abgebrochen")
+            logger.info("WatchService Background Task cancelled")
         except Exception as e:
-            logger.error(f"Unerwarteter Fehler in WatchService Loop: {e}")
+            logger.error(f"Unexpected error in WatchService Loop: {e}")
         finally:
-            logger.info("WatchService Background Task beendet")
+            logger.info("WatchService Background Task ended")
 
     async def _execute_clear_task(self) -> None:
         """Führt den Background Task zum Löschen abgespielter Tracks aus.
 
         Hauptfunktion für den Background Task, die:
-        1. Auf aktives Playback prüft
-        2. Die bestehende clear_played_tracks_from_playlist Logik aufruft
-        3. Den WatchService State basierend auf Ergebnissen aktualisiert
-        4. Wiederholungsversuche und Stopp-Bedingungen behandelt
+        1. Checks for active playback
+        2. Calls the existing clear_played_tracks_from_playlist logic
+        3. Updates the WatchService state based on results
+        4. Handles retry attempts and stop conditions
         """
         try:
-            logger.info("Führe Clear Played Tracks Background Task aus")
+            logger.info("Executing Clear Played Tracks Background Task")
 
             # Aktualisiere last_checked Timestamp
             await update_checker_state(last_checked=datetime.now(UTC))
 
-            # Prüfe auf aktives Playback
+            # Check for active playback
             active_playback = await self._check_active_playback()
             await update_checker_state(last_playback_detected=active_playback)
 
             if not active_playback:
-                # Behandle Szenario ohne aktives Playback
+                # Handle scenario without active playback
                 current_state = await get_checker_state()
                 await update_checker_state(
                     retries_left=max(0, current_state.retries_left - 1)
                 )
                 logger.warning(
-                    f"Kein aktives Playback erkannt. Verbleibende Versuche: {current_state.retries_left - 1}"
+                    f"No active playback detected. Retries left: {current_state.retries_left - 1}"
                 )
 
                 if current_state.retries_left <= 1:
-                    logger.error("Keine Versuche mehr übrig, stoppe WatchService")
+                    logger.error("No retries left, stopping WatchService")
                     await self.stop_watch_service()
                     return
 
@@ -244,24 +244,24 @@ class WatchService:
                 + timedelta(minutes=settings.watch_service_timeout_minutes)
             )
 
-            logger.info("Background Task erfolgreich abgeschlossen")
+            logger.info("Background Task completed successfully")
 
         except Exception as e:
-            logger.error(f"Fehler in Background Task: {e}")
+            logger.error(f"Error in Background Task: {e}")
             current_state = await get_checker_state()
             await update_checker_state(
                 retries_left=max(0, current_state.retries_left - 1)
             )
 
             if current_state.retries_left <= 1:
-                logger.error("Keine Versuche mehr wegen Fehlern, stoppe WatchService")
+                logger.error("No retries left due to errors, stopping WatchService")
                 await self.stop_watch_service()
 
     async def _check_active_playback(self) -> bool:
-        """Prüft, ob eine aktive Playback Session existiert.
+        """Checks if an active playback session exists.
 
         Returns:
-            bool: True wenn aktives Playback erkannt wird, False sonst
+            bool: True if active playback is detected, False otherwise
         """
         try:
             current_playback_result = await self.spotify_client.get_current_playback()
@@ -273,14 +273,14 @@ class WatchService:
             return current_playback is not None
 
         except Exception as e:
-            logger.error(f"Fehler beim Prüfen auf aktives Playback: {e}")
+            logger.error(f"Error checking for active playback: {e}")
             return False
 
     async def _clear_played_tracks(self) -> None:
         """Führt die Clear Played Tracks Logik mit bestehendem Service aus.
 
         Ruft die bestehende clear_played_tracks_from_playlist Funktion
-        aus playlist_service.py auf, die die Kern-Business-Logik enthält.
+        from playlist_service.py that contains the core business logic.
         """
         try:
             settings = get_settings()
@@ -294,13 +294,13 @@ class WatchService:
             )
 
             if is_successful(result):
-                logger.info("Abgespielte Tracks erfolgreich aus Playlist gelöscht")
+                logger.info("Played tracks successfully removed from playlist")
             else:
                 error = result.failure()
-                logger.warning(f"Löschen abgespielter Tracks fehlgeschlagen: {error}")
+                logger.warning(f"Clearing played tracks failed: {error}")
 
         except Exception as e:
-            logger.error(f"Fehler beim Löschen abgespielter Tracks: {e}")
+            logger.error(f"Error clearing played tracks: {e}")
             raise RuntimeError(f"Clear played tracks failed: {e}") from e
 
 
@@ -311,24 +311,24 @@ async def clear_playlist(
     autofill_count: int | None = None,
 ) -> Result[dict[str, int], PlaylistClearError]:
     """
-    Diese Funktion implementiert das Clear Played Watchmode Feature durch direkte Verwendung
-    von Client-Instanzen und Rückgabe eines Result-Typs mit Success/Failure Pattern.
+    This function implements the Clear Played Watchmode Feature through direct usage
+    using client instances and returning a Result type with Success/Failure Pattern.
 
     Args:
         supabase_client: Direkte SupabaseClient Instanz
         spotify_client: Direkte SpotifyClient Instanz
-        config_playlist_id: Die konfigurierte Playlist-ID
-        autofill_count: Anzahl der Tracks zum automatischen Auffüllen (None = deaktiviert)
+        config_playlist_id: The configured playlist ID
+        autofill_count: Number of tracks for automatic refill (None = disabled)
 
     Returns:
         Result[dict[str, int], PlaylistClearError]:
             - Success(dict): Dictionary mit 'deleted_count' und 'filled_count' Schlüsseln
-            - Failure(PlaylistClearError): Detaillierte Fehlerinformationen
+            - Failure(PlaylistClearError): Detailed error information
     """
     logger.info("Starting watch service operation")
 
     try:
-        # Verwende die bestehende clear_played_tracks_from_playlist Logik
+        # Use the existing clear_played_tracks_from_playlist logic
         from src.core.services.playlist_service import clear_played_tracks_from_playlist
 
         result = await clear_played_tracks_from_playlist(
@@ -364,15 +364,15 @@ def watch_service(
     spotify_client: SpotifyClient,
     supabase_client: SupabaseClient,
 ) -> WatchService:
-    """Diese Funktion implementiert ein Singleton Pattern, um sicherzustellen,
-    dass nur eine WatchService Instanz in der Anwendung läuft.
+    """This function implements a Singleton Pattern to ensure,
+    that only one WatchService instance runs in the application.
 
     Args:
-        spotify_client: Spotify Client Instanz
-        supabase_client: Supabase Client Instanz
+        spotify_client: Spotify Client instance
+        supabase_client: Supabase Client instance
 
     Returns:
-        WatchService: Die globale WatchService Instanz
+        WatchService: The global WatchService instance
     """
     global _global_watch_service
 

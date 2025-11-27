@@ -1,6 +1,6 @@
-"""FastAPI API für Supabase to Spotify Anwendung.
+"""FastAPI API for Supabase to Spotify application.
 
-Dieses Modul enthält alle API-Endpunkte und die FastAPI-Anwendungskonfiguration.
+This module contains all API endpoints and the FastAPI application configuration.
 """
 
 import ssl
@@ -311,8 +311,8 @@ async def clear_played_watchmode_endpoint(
 
             # Check if already running
             if current_state.is_running:
-                logger.info("WatchService bereits aktiv")
-                # State-Konsistenz prüfen: wenn Checker läuft, muss next_check gesetzt sein
+                logger.info("WatchService already active")
+                # Check state consistency: if Checker is running, next_check must be set
                 if current_state.next_check is None:
                     raise HTTPException(
                         status_code=500,
@@ -342,7 +342,7 @@ async def clear_played_watchmode_endpoint(
 
                 logger.info("Background monitoring started successfully")
 
-                # State-Konsistenz prüfen: wenn Checker läuft, muss next_check gesetzt sein
+                # Check state consistency: if Checker is running, next_check must be set
                 if new_state.next_check is None:
                     raise HTTPException(
                         status_code=500,
@@ -372,7 +372,7 @@ async def clear_played_watchmode_endpoint(
                 # Handle specific error cases
                 if (
                     "no_active_playback" in str(e).lower()
-                    or "kein aktives playback" in str(e).lower()
+                    or "no active playback" in str(e).lower()
                 ):
                     return JSONResponse(
                         status_code=409,
