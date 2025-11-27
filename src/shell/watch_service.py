@@ -220,11 +220,10 @@ class WatchService:
             if not active_playback:
                 # Handle scenario without active playback
                 current_state = await get_checker_state()
-                await update_checker_state(
-                    retries_left=max(0, current_state.retries_left - 1)
-                )
+                new_retries_left = max(0, current_state.retries_left - 1)
+                await update_checker_state(retries_left=new_retries_left)
                 logger.warning(
-                    f"No active playback detected. Retries left: {current_state.retries_left - 1}"
+                    f"No active playback detected. Retries left: {new_retries_left}"
                 )
 
                 if current_state.retries_left <= 1:
@@ -249,11 +248,10 @@ class WatchService:
         except Exception as e:
             logger.error(f"Error in Background Task: {e}")
             current_state = await get_checker_state()
-            await update_checker_state(
-                retries_left=max(0, current_state.retries_left - 1)
-            )
+            new_retries_left = max(0, current_state.retries_left - 1)
+            await update_checker_state(retries_left=new_retries_left)
 
-            if current_state.retries_left <= 1:
+            if new_retries_left <= 0:
                 logger.error("No retries left due to errors, stopping WatchService")
                 await self.stop_watch_service()
 
