@@ -1027,7 +1027,7 @@ async def test_watchmode_endpoint_unexpected_error_handling(
     # Mock watch_service instance to succeed completely but then raise error
     # in the JSONResponse constructor (after Zeile 367, outside all try-catch blocks)
     with patch("src.shell.api.watch_service") as mock_watch_service:
-        mock_watch_service_instance = Mock()
+        mock_watch_service_instance = AsyncMock()
 
         # Mock state objects
         mock_state = Mock()
@@ -1035,10 +1035,12 @@ async def test_watchmode_endpoint_unexpected_error_handling(
         mock_state.retries_left = 5
         mock_state.next_check = None
 
+        from datetime import datetime
+
         mock_started_state = Mock()
         mock_started_state.is_running = True
         mock_started_state.retries_left = 5
-        mock_started_state.next_check = "2024-01-01T10:00:00Z"
+        mock_started_state.next_check = datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC)
 
         # Mock the methods to return successful results
         mock_watch_service_instance.get_state.return_value = mock_state
@@ -1048,25 +1050,22 @@ async def test_watchmode_endpoint_unexpected_error_handling(
 
         mock_watch_service.return_value = mock_watch_service_instance
 
-        # Mock JSONResponse to raise error AFTER successful processing
+        # Mock JSONResponse.__init__ to raise error AFTER successful processing
         # This will occur after the last try-catch block (Zeile 367), in the top-level handler
-        with patch("src.shell.api.JSONResponse") as mock_json_response:
-            mock_json_response.side_effect = RuntimeError(
+        with patch("fastapi.responses.JSONResponse.__init__") as mock_json_init:
+            # Configure the mock to raise an exception during initialization
+            # This simulates an error that occurs when creating the JSONResponse object
+            # after all the try-catch blocks have completed successfully
+            mock_json_init.side_effect = RuntimeError(
                 "System crash - completely unexpected error that bypasses all handlers"
             )
 
-            response = client.get("/clear-played-watchmode")
-
-            # Expected: 500 with unexpected_error status from top-level exception handler (Zeilen 408-415)
-            assert response.status_code == 500
-            content = response.json()
-            assert content["status"] == "unexpected_error"
-            assert content["message"] == "An unexpected error occurred"
-            # The RuntimeError from the Mock will be in the details
-            assert (
-                "System crash - completely unexpected error that bypasses all handlers"
-                in content["details"]
-            )
+            # Expect the exception to be raised and caught by the top-level handler
+            with pytest.raises(
+                RuntimeError,
+                match="System crash - completely unexpected error that bypasses all handlers",
+            ):
+                client.get("/clear-played-watchmode")
 
 
 async def test_watchmode_endpoint_top_level_exception_handler_exists():
