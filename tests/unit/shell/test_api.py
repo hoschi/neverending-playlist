@@ -940,7 +940,7 @@ async def test_watchmode_endpoint_playback_inactive_during_startup_409(
 
         # Mock startup with "no active playback" error
         mock_watch_service_instance.start_watch_service.side_effect = ValueError(
-            "Kein aktives Playback erkannt"
+            "No active playback detected. WatchService not started."
         )
 
         mock_watch_service.return_value = mock_watch_service_instance

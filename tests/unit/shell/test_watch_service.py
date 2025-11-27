@@ -164,7 +164,7 @@ async def test_watch_service_start_watch_service_no_active_playback(
             mock_get_state.return_value = mock_updated_state
 
             # Should raise ValueError when retries exhausted
-            with pytest.raises(ValueError, match="Kein aktives Playback erkannt"):
+            with pytest.raises(ValueError, match="No active playback detected"):
                 await watch_service_instance.start_watch_service()
 
 
@@ -192,7 +192,7 @@ async def test_watch_service_start_watch_service_playback_failure(
             mock_get_state.return_value = mock_updated_state
 
             # Should raise ValueError when retries exhausted
-            with pytest.raises(ValueError, match="Kein aktives Playback erkannt"):
+            with pytest.raises(ValueError, match="No active playback detected"):
                 await watch_service_instance.start_watch_service()
 
 
@@ -220,7 +220,7 @@ async def test_watch_service_start_watch_service_playback_exception(
             mock_get_state.return_value = mock_updated_state
 
             # Should raise ValueError when retries exhausted
-            with pytest.raises(ValueError, match="Kein aktives Playback erkannt"):
+            with pytest.raises(ValueError, match="No active playback detected"):
                 await watch_service_instance.start_watch_service()
 
 
@@ -1112,9 +1112,9 @@ async def test_watch_service_watch_loop_cancelled_error_handling(
             assert mock_execute.call_count == 1
 
             # Verify correct logging for CancelledError
-            mock_logger.info.assert_any_call("WatchService Background Task abgebrochen")
+            mock_logger.info.assert_any_call("WatchService Background Task cancelled")
             # Also verify the finally block logging
-            mock_logger.info.assert_any_call("WatchService Background Task beendet")
+            mock_logger.info.assert_any_call("WatchService Background Task ended")
 
 
 async def test_watch_service_watch_loop_unexpected_exception_handling(
@@ -1137,7 +1137,7 @@ async def test_watch_service_watch_loop_unexpected_exception_handling(
 
             # Verify correct logging for unexpected exception
             mock_logger.error.assert_called_with(
-                "Unerwarteter Fehler in WatchService Loop: Unexpected system error"
+                "Unexpected error in WatchService Loop: Unexpected system error"
             )
 
 
@@ -1159,7 +1159,7 @@ async def test_watch_service_watch_loop_network_error_handling(watch_service_ins
 
             # Verify correct logging for network error
             mock_logger.error.assert_called_with(
-                "Unerwarteter Fehler in WatchService Loop: Network connection failed"
+                "Unexpected error in WatchService Loop: Network connection failed"
             )
 
 
@@ -1181,7 +1181,7 @@ async def test_watch_service_watch_loop_database_error_handling(watch_service_in
 
             # Verify correct logging for database error
             mock_logger.error.assert_called_with(
-                "Unerwarteter Fehler in WatchService Loop: Database connection lost"
+                "Unexpected error in WatchService Loop: Database connection lost"
             )
 
 
