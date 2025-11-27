@@ -1,7 +1,7 @@
 """In-Memory WatchService für Clear Played Watchmode Funktionalität.
 
 Dieses Modul implementiert die Background Task Verwaltung für das automatische
-Löschen von abgespielten Tracks aus Playlists alle 10 Minuten mit asyncio.
+Löschen von abgespielten Tracks aus Playlists mit konfigurierbarer Intervallzeit mit asyncio.
 """
 
 import asyncio
@@ -31,7 +31,7 @@ class WatchService:
     """In-Memory WatchService für Clear Played Watchmode.
 
     Verwaltet State und Ausführung der automatischen Playlist-Clearing
-    Funktionalität, die alle 10 Minuten mit asyncio Tasks läuft.
+    Funktionalität, die mit konfigurierbarem Intervall mit asyncio Tasks läuft.
     """
 
     def __init__(
@@ -54,7 +54,7 @@ class WatchService:
         """Startet den Background WatchService Task.
 
         Initiiert den wiederkehrenden Background Task, der nach aktivem Playback
-        überwacht und automatisch abgespielte Tracks aus der Playlist alle 10 Minuten löscht.
+        überwacht und automatisch abgespielte Tracks aus der Playlist in konfigurierbaren Intervallen löscht.
 
         Returns:
             CheckerState: Der aktuelle State des WatchService nach dem Start
@@ -82,11 +82,13 @@ class WatchService:
                     return await get_checker_state()
 
             # Setze State auf "gestartet"
+            settings = get_settings()
             await update_checker_state(
                 is_running=True,
                 retries_left=5,
                 last_playback_detected=True,
-                next_check=datetime.now(UTC) + timedelta(minutes=10),
+                next_check=datetime.now(UTC)
+                + timedelta(minutes=settings.watch_service_timeout_minutes),
             )
 
             logger.info("WatchService erfolgreich mit asyncio gestartet")
@@ -169,7 +171,7 @@ class WatchService:
         2. Ruft die bestehende clear_played_tracks_from_playlist Logik auf
         3. Aktualisiert den WatchService State basierend auf Ergebnissen
         4. Behandelt Wiederholungsversuche und Stopp-Bedingungen
-        5. Wartet 10 Minuten vor dem nächsten Durchlauf
+        5. Wartet konfigurierbare Zeit vor dem nächsten Durchlauf
         """
         logger.info("WatchService Background Task gestartet")
 
@@ -177,11 +179,13 @@ class WatchService:
             while not self._shutdown_event.is_set():
                 await self._execute_clear_task()
 
-                # Warte 10 Minuten oder bis Shutdown Signal
+                # Warte konfigurierbare Zeit oder bis Shutdown Signal
                 try:
+                    settings = get_settings()
                     await asyncio.wait_for(
                         self._shutdown_event.wait(),
-                        timeout=600.0,  # 10 Minuten
+                        timeout=settings.watch_service_timeout_minutes
+                        * 60.0,  # in seconds
                     )
                     break  # Shutdown Signal erhalten
                 except TimeoutError:
@@ -234,8 +238,10 @@ class WatchService:
             await self._clear_played_tracks()
 
             # Plane nächsten Check
+            settings = get_settings()
             await update_checker_state(
-                next_check=datetime.now(UTC) + timedelta(minutes=10)
+                next_check=datetime.now(UTC)
+                + timedelta(minutes=settings.watch_service_timeout_minutes)
             )
 
             logger.info("Background Task erfolgreich abgeschlossen")
