@@ -1403,3 +1403,219 @@ async def test_watch_service_timeout_edge_cases():
         mock_settings.watch_service_timeout_minutes = 60
         mock_get_settings.return_value = mock_settings
         assert mock_settings.watch_service_timeout_minutes == 60
+
+
+async def test_retry_counter_resets_when_playback_detected(watch_service_instance):
+    """Testet das korrekte Verhalten nach dem Fix: Retry-Counter wird zurückgesetzt wenn Playback erkannt wird."""
+    # Mock die State-Funktionen
+    with (
+        patch("src.shell.watch_service.get_checker_state") as mock_get_state,
+        patch("src.shell.watch_service.update_checker_state") as mock_update_state,
+    ):
+        # Simuliere State mit reduzierten retries (nach mehreren failed checks)
+        degraded_state = Mock()
+        degraded_state.is_running = True
+        degraded_state.retries_left = 1  # Nur noch 1 retry übrig
+        degraded_state.last_playback_detected = False
+
+        mock_get_state.return_value = degraded_state
+
+        # Mock _check_active_playback um True (Playback erkannt) zu returnen
+        with patch.object(
+            watch_service_instance, "_check_active_playback"
+        ) as mock_check_playback:
+            mock_check_playback.return_value = True
+
+            # Mock _clear_played_tracks
+            with patch.object(
+                watch_service_instance, "_clear_played_tracks"
+            ) as mock_clear:
+                mock_clear.return_value = None
+
+                # Führe die execute_clear_task Methode aus
+                await watch_service_instance._execute_clear_task()
+
+                # Überprüfe, dass der State aktualisiert wurde
+                update_calls = mock_update_state.call_args_list
+
+                # Überprüfe, dass last_playback_detected auf True gesetzt wurde
+                playback_detected_updated = False
+                for call in update_calls:
+                    if (
+                        "last_playback_detected" in call[1]
+                        and call[1]["last_playback_detected"] is True
+                    ):
+                        playback_detected_updated = True
+                        break
+
+                assert playback_detected_updated, (
+                    "last_playback_detected sollte auf True gesetzt werden"
+                )
+
+                # Überprüfe, dass der Retry-Counter zurückgesetzt wurde (nach dem Fix)
+                # Der Retry-Counter sollte zurückgesetzt werden, wenn Playback erkannt wird
+                retry_reset_found = False
+                for call in update_calls:
+                    if "retries_left" in call[1] and call[1]["retries_left"] == 5:
+                        retry_reset_found = True
+                        break
+
+                # Nach dem Fix sollte der Retry-Counter zurückgesetzt werden
+                assert retry_reset_found, (
+                    "Retry-Counter sollte zurückgesetzt werden wenn Playback erkannt wird"
+                )
+
+
+async def test_retry_counter_should_reset_when_playback_detected_after_no_playback(
+    watch_service_instance,
+):
+    """Testet das erwartete Verhalten: Retry-Counter sollte zurückgesetzt werden wenn Playback erkannt wird."""
+    # Mock die State-Funktionen
+    with (
+        patch("src.shell.watch_service.get_checker_state") as mock_get_state,
+        patch("src.shell.watch_service.update_checker_state") as mock_update_state,
+    ):
+        # Simuliere State mit reduzierten retries (nach mehreren failed checks)
+        degraded_state = Mock()
+        degraded_state.is_running = True
+        degraded_state.retries_left = 2  # Nur noch 2 retries übrig
+        degraded_state.last_playback_detected = False
+
+        mock_get_state.return_value = degraded_state
+
+        # Mock _check_active_playback um True (Playback erkannt) zu returnen
+        with patch.object(
+            watch_service_instance, "_check_active_playback"
+        ) as mock_check_playback:
+            mock_check_playback.return_value = True
+
+            # Mock _clear_played_tracks
+            with patch.object(
+                watch_service_instance, "_clear_played_tracks"
+            ) as mock_clear:
+                mock_clear.return_value = None
+
+                # Führe die execute_clear_task Methode aus
+                await watch_service_instance._execute_clear_task()
+
+                # Überprüfe, dass der State aktualisiert wurde
+                update_calls = mock_update_state.call_args_list
+
+                # Überprüfe, dass der Retry-Counter zurückgesetzt wurde (erwartetes Verhalten nach Fix)
+                retry_reset_found = False
+                for call in update_calls:
+                    if "retries_left" in call[1] and call[1]["retries_left"] == 5:
+                        retry_reset_found = True
+                        break
+
+                # Nach dem Fix sollte der Retry-Counter zurückgesetzt werden
+                assert retry_reset_found, (
+                    "Retry-Counter sollte auf 5 zurückgesetzt werden wenn Playback erkannt wird"
+                )
+
+
+async def test_retry_counter_decrements_when_no_playback(watch_service_instance):
+    """Testet, dass der Retry-Counter korrekt dekrementiert wird wenn kein Playback erkannt wird."""
+    # Mock die State-Funktionen
+    with (
+        patch("src.shell.watch_service.get_checker_state") as mock_get_state,
+        patch("src.shell.watch_service.update_checker_state") as mock_update_state,
+    ):
+        # Simuliere State mit 3 retries
+        initial_state = Mock()
+        initial_state.is_running = True
+        initial_state.retries_left = 3
+        initial_state.last_playback_detected = False
+
+        mock_get_state.return_value = initial_state
+
+        # Mock _check_active_playback um False (kein Playback) zu returnen
+        with patch.object(
+            watch_service_instance, "_check_active_playback"
+        ) as mock_check_playback:
+            mock_check_playback.return_value = False
+
+            # Führe die execute_clear_task Methode aus
+            await watch_service_instance._execute_clear_task()
+
+            # Überprüfe, dass der State aktualisiert wurde
+            update_calls = mock_update_state.call_args_list
+
+            # Überprüfe, dass der Retry-Counter dekrementiert wurde
+            retry_decrement_found = False
+            for call in update_calls:
+                if "retries_left" in call[1] and call[1]["retries_left"] == 2:
+                    retry_decrement_found = True
+                    break
+
+            assert retry_decrement_found, (
+                "Retry-Counter sollte auf 2 dekrementiert werden wenn kein Playback erkannt wird"
+            )
+
+
+async def test_retry_counter_resets_to_5_after_playback_detection(
+    watch_service_instance,
+):
+    """Integrationstest: Retry-Counter sollte nach Playback-Erkennung wieder auf 5 gesetzt werden."""
+    # Mock die State-Funktionen
+    with (
+        patch("src.shell.watch_service.get_checker_state") as mock_get_state,
+        patch("src.shell.watch_service.update_checker_state") as mock_update_state,
+    ):
+        # Simuliere State mit reduzierten retries
+        initial_state = Mock()
+        initial_state.is_running = True
+        initial_state.retries_left = 1  # Nur noch 1 retry übrig
+        initial_state.last_playback_detected = False
+
+        # Mock return_value für get_checker_state
+        mock_get_state.return_value = initial_state
+
+        # Mock _check_active_playback um True (Playback erkannt) zu returnen
+        with patch.object(
+            watch_service_instance, "_check_active_playback"
+        ) as mock_check_playback:
+            mock_check_playback.return_value = True
+
+            # Mock _clear_played_tracks
+            with patch.object(
+                watch_service_instance, "_clear_played_tracks"
+            ) as mock_clear:
+                mock_clear.return_value = None
+
+                # Mock settings für next_check Berechnung
+                with patch("src.shell.watch_service.get_settings") as mock_get_settings:
+                    mock_settings = Mock()
+                    mock_settings.watch_service_timeout_minutes = 10
+                    mock_get_settings.return_value = mock_settings
+
+                    # Führe die execute_clear_task Methode aus
+                    await watch_service_instance._execute_clear_task()
+
+                    # Überprüfe alle update_calls
+                    update_calls = mock_update_state.call_args_list
+
+                    # Sollte mindestens 2 Aufrufe enthalten: last_checked und last_playback_detected + retries_left
+                    assert len(update_calls) >= 1
+
+                    # Überprüfe, dass der Retry-Counter zurückgesetzt wurde
+                    retry_reset_found = False
+                    playback_detected_found = False
+
+                    for call in update_calls:
+                        kwargs = call[1]
+                        if "retries_left" in kwargs and kwargs["retries_left"] == 5:
+                            retry_reset_found = True
+                        if (
+                            "last_playback_detected" in kwargs
+                            and kwargs["last_playback_detected"] is True
+                        ):
+                            playback_detected_found = True
+
+                    # Nach dem Fix sollten beide Updates erfolgen
+                    assert retry_reset_found, (
+                        "Retry-Counter sollte auf 5 zurückgesetzt werden"
+                    )
+                    assert playback_detected_found, (
+                        "last_playback_detected sollte aktualisiert werden"
+                    )

@@ -232,6 +232,9 @@ class WatchService:
                     return
 
                 return
+            else:
+                # Reset retry counter when playback is detected again
+                await update_checker_state(retries_left=5)
 
             # Führe die Clear Played Tracks Logik aus
             await self._clear_played_tracks()

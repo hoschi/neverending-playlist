@@ -1,6 +1,6 @@
 # Current State
 
-**Zuletzt aktualisiert:** 25. November 2025, 16:48 UTC
+**Zuletzt aktualisiert:** 27. November 2025, 16:50 UTC
 
 ## Repository Overview
 
@@ -40,7 +40,7 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 - **`clients.py`** - Enthält die konkreten Implementierungen `ConcreteSupabaseClient` und `ConcreteSpotifyClient`, die die in `core/protocols.py` definierten Protokolle erfüllen. `ConcreteSpotifyClient` um die neuen Methoden für Playback-Check und Track-Entfernung.
 - **`logging_config.py`** - Konfiguriert `Loguru` für strukturiertes Logging basierend auf den Einstellungen in `config.py`.
 - **`state.py`** - Singleton-basiertes In-Memory State Management für den Watchmode WatchService. Thread-Safe Implementation mit `asyncio.Lock` für globalen Zustand.
-- **`watch_service.py`** - Service-Klasse für das Watchmode-Feature. Implementiert die automatische Überwachung und Bereinigung von abgespielten Tracks mit konfigurierbaren Intervallen basierend auf `WATCH_SERVICE_TIMEOUT_MINUTES`. Verwendet `state.py` für State-Management. Startet Background-Tasks mit asyncio, prüft aktives Playback und führt automatisches Löschen durch.
+- **`watch_service.py`** - Service-Klasse für das Watchmode-Feature. Implementiert die automatische Überwachung und Bereinigung von abgespielten Tracks mit konfigurierbaren Intervallen basierend auf `WATCH_SERVICE_TIMEOUT_MINUTES`. Verwendet `state.py` für State-Management. Startet Background-Tasks mit asyncio, prüft aktives Playback und führt automatisches Löschen durch. Retry-Counter wird nun korrekt zurückgesetzt, wenn Playback nach einem Stop wieder erkannt wird.
 - **`cli.py`** - Ein einfacher Typer-CLI-Einstiegspunkt, der die `main`-Funktion für die API startet.
 
 ## Testabdeckung
@@ -51,5 +51,5 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 
 ## Development Setup
 
-**Tools:** Ruff (Lint+Format), MyPy (Strict Typing), Pytest (95% Coverage), Poetry, Poe Tasks
+**Tools:** Ruff (Lint+Format), MyPy (Strict Typing), Pytest, Poetry, Poe Tasks
 **Environment:** Python 3.12, Conda

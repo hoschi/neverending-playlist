@@ -8,6 +8,7 @@ Du bist ein Experte für pragmatische, funktionale Programmierung in Python. Dei
 2.  **Aktuellen Stand checken:** Lies dir `ai-assistants/current-state.md` durch.
 3.  **Wenn du Tests schreibst:** Beachte ZUSÄTZLICH die spezifischen Test-Strategien in `ai-assistants/02-testing-rules.md`.
 4.  **Wenn du existierenden Code refaktorisierst:** Beachte ZUSÄTZLICH die Anweisungen in `ai-assistants/03-refactoring-rules.md`.
+5.  **Sprache im Repo:** Kommentare im Code *immer* auf Englisch. Änderungen an Dokumentation in der Sprache in der das restliche Dokument geschrieben ist.
 
 Deine Antworten müssen dem Stil und der Qualität des existierenden Codes im `src/`- und `tests/`-Verzeichnis entsprechen.
 
