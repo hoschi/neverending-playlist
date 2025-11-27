@@ -768,30 +768,6 @@ graph = ["objgraph (>=1.7.2)"]
 profile = ["gprof2dot (>=2022.7.29)"]
 
 [[package]]
-name = "dramatiq"
-version = "1.18.0"
-description = "Background Processing for Python 3."
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "dramatiq-1.18.0-py3-none-any.whl", hash = "sha256:d360f608aa3cd06f5db714bfcd23825dc7098bacfee52aca536b0bb0faae3c69"},
-    {file = "dramatiq-1.18.0.tar.gz", hash = "sha256:5ea436b6e50dae64d4de04f1eb519ad239a6b1ba6315ba1dce1c0c4c1ebedfaf"},
-]
-
-[package.dependencies]
-prometheus-client = ">=0.2"
-
-[package.extras]
-all = ["gevent (>=1.1)", "pika (>=1.0,<2.0)", "pylibmc (>=1.5,<2.0)", "redis (>=2.0,<7.0)", "watchdog (>=4.0)", "watchdog_gevent (>=0.2)"]
-dev = ["alabaster", "bumpversion", "flake8", "flake8-bugbear", "flake8-quotes", "gevent (>=1.1)", "hiredis", "isort", "mypy", "pika (>=1.0,<2.0)", "pylibmc (>=1.5,<2.0)", "pytest", "pytest-benchmark[histogram]", "pytest-cov", "redis (>=2.0,<7.0)", "sphinx", "sphinxcontrib-napoleon", "tox", "twine", "watchdog (>=4.0)", "watchdog_gevent (>=0.2)", "wheel"]
-gevent = ["gevent (>=1.1)"]
-memcached = ["pylibmc (>=1.5,<2.0)"]
-rabbitmq = ["pika (>=1.0,<2.0)"]
-redis = ["redis (>=2.0,<7.0)"]
-watch = ["watchdog (>=4.0)", "watchdog_gevent (>=0.2)"]
-
-[[package]]
 name = "executing"
 version = "2.2.1"
 description = "Get the currently executing AST node of a frame, and other information"
@@ -2125,23 +2101,6 @@ files = [
 ptyprocess = ">=0.5"
 
 [[package]]
-name = "pika"
-version = "1.3.2"
-description = "Pika Python AMQP Client Library"
-optional = false
-python-versions = ">=3.7"
-groups = ["main"]
-files = [
-    {file = "pika-1.3.2-py3-none-any.whl", hash = "sha256:0779a7c1fafd805672796085560d290213a465e4f6f76a6fb19e378d8041a14f"},
-    {file = "pika-1.3.2.tar.gz", hash = "sha256:b2a327ddddf8570b4965b3576ac77091b850262d34ce8c1d8cb4e4146aa4145f"},
-]
-
-[package.extras]
-gevent = ["gevent"]
-tornado = ["tornado"]
-twisted = ["twisted"]
-
-[[package]]
 name = "platformdirs"
 version = "4.4.0"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
@@ -2241,7 +2200,7 @@ version = "0.22.1"
 description = "Python client for the Prometheus monitoring system."
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "prometheus_client-0.22.1-py3-none-any.whl", hash = "sha256:cca895342e308174341b2cbf99a56bef291fbc0ef7b9e5412a0f26d653ba7094"},
     {file = "prometheus_client-0.22.1.tar.gz", hash = "sha256:190f1331e783cf21eb60bca559354e0a4d4378facecf78f5428c39b675d20d28"},
@@ -4066,4 +4025,4 @@ dev = ["black (>=19.3b0) ; python_version >= \"3.6\"", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "a278c27414a640d404a8f0b79aca7ec9bf08dd3ad0290562b0cfd4fc9bcbb292"
+content-hash = "0ab8fb87a5b9c623ce1cefb322b8bdb1439c27b45c7890c94022023aaf84f782"
