@@ -88,12 +88,24 @@ async def test_watch_service_start_watch_service_success(
     watch_service_instance, mock_spotify_client
 ):
     """Test successful start of watch service."""
-    # Mock no current state (not running)
+    # Mock initial state (not running)
     with patch("src.shell.watch_service.get_checker_state") as mock_get_state:
-        mock_state = Mock()
-        mock_state.is_running = False
-        mock_state.retries_left = 5
-        mock_get_state.return_value = mock_state
+        initial_state = Mock()
+        initial_state.is_running = False
+        initial_state.retries_left = 5
+        initial_state.last_playback_detected = False
+        initial_state.last_checked = None
+        initial_state.next_check = None
+
+        # Updated state (after start)
+        updated_state = Mock()
+        updated_state.is_running = True
+        updated_state.retries_left = 5
+        updated_state.last_playback_detected = True
+        updated_state.last_checked = datetime.now()
+        updated_state.next_check = datetime.now() + timedelta(minutes=10)
+
+        mock_get_state.side_effect = [initial_state, updated_state]
 
         # Mock active playback
         mock_spotify_client.get_current_playback.return_value = Success(
@@ -102,12 +114,7 @@ async def test_watch_service_start_watch_service_success(
 
         # Mock update state calls
         with patch("src.shell.watch_service.update_checker_state") as mock_update:
-            mock_updated_state = Mock()
-            mock_updated_state.is_running = True
-            mock_updated_state.retries_left = 5
-            mock_updated_state.last_playback_detected = True
-            mock_updated_state.next_check = datetime.now() + timedelta(minutes=10)
-            mock_update.return_value = mock_updated_state
+            mock_update.return_value = updated_state
 
             # Start service
             await watch_service_instance.start_watch_service()
@@ -1269,12 +1276,24 @@ async def test_watch_service_start_uses_configurable_timeout_for_next_check(
     watch_service_instance, mock_spotify_client
 ):
     """Test that start_watch_service uses the configurable timeout for next_check calculation."""
-    # Mock current state (not running)
+    # Mock initial state (not running)
     with patch("src.shell.watch_service.get_checker_state") as mock_get_state:
-        mock_state = Mock()
-        mock_state.is_running = False
-        mock_state.retries_left = 5
-        mock_get_state.return_value = mock_state
+        initial_state = Mock()
+        initial_state.is_running = False
+        initial_state.retries_left = 5
+        initial_state.last_playback_detected = False
+        initial_state.last_checked = None
+        initial_state.next_check = None
+
+        # Updated state (after start)
+        updated_state = Mock()
+        updated_state.is_running = True
+        updated_state.retries_left = 5
+        updated_state.last_playback_detected = True
+        updated_state.last_checked = datetime.now()
+        updated_state.next_check = datetime.now() + timedelta(minutes=5)
+
+        mock_get_state.side_effect = [initial_state, updated_state]
 
         # Mock active playback
         mock_spotify_client.get_current_playback.return_value = Success(
@@ -1291,12 +1310,7 @@ async def test_watch_service_start_uses_configurable_timeout_for_next_check(
 
             # Mock update state calls
             with patch("src.shell.watch_service.update_checker_state") as mock_update:
-                mock_updated_state = Mock()
-                mock_updated_state.is_running = True
-                mock_updated_state.retries_left = 5
-                mock_updated_state.last_playback_detected = True
-                mock_updated_state.next_check = datetime.now() + timedelta(minutes=5)
-                mock_update.return_value = mock_updated_state
+                mock_update.return_value = updated_state
 
                 # Start service
                 await watch_service_instance.start_watch_service()

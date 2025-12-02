@@ -6,7 +6,9 @@ removal of played tracks from playlists with configurable interval timing using 
 
 import asyncio
 import contextlib
+import time
 from datetime import UTC, datetime, timedelta
+from threading import current_thread
 
 from loguru import logger
 from returns.pipeline import is_successful
@@ -49,6 +51,43 @@ class WatchService:
         self.supabase_client = supabase_client
         self._task: asyncio.Task[None] | None = None
         self._shutdown_event = asyncio.Event()
+        self._timing_metrics: dict[str, float] = {}  # For tracking execution times
+
+    def _log_trace_state(
+        self, operation: str, event_state: bool, thread_id: str | None = None
+    ) -> None:
+        """TRACE-Level logging for state transitions.
+
+        Args:
+            operation: Name of the current operation
+            event_state: Current state of shutdown event
+            thread_id: Thread identifier for async context
+        """
+        if thread_id is None:
+            thread_id = str(current_thread())
+
+        logger.trace(
+            f"[{thread_id}] {operation} - Shutdown event state: {event_state}, "
+            f"Task: {self._task}, Task done: {self._task.done() if self._task else 'N/A'}"
+        )
+
+    def _log_trace_timing(
+        self, operation: str, start_time: float, thread_id: str | None = None
+    ) -> None:
+        """TRACE-Level timing metrics logging.
+
+        Args:
+            operation: Name of the operation
+            start_time: Start timestamp
+            thread_id: Thread identifier for async context
+        """
+        if thread_id is None:
+            thread_id = str(current_thread())
+
+        elapsed = time.time() - start_time
+        self._timing_metrics[operation] = elapsed
+
+        logger.trace(f"[{thread_id}] {operation} completed in {elapsed:.3f}s")
 
     async def start_watch_service(self) -> CheckerState:
         """Starts the Background WatchService Task.
@@ -59,29 +98,132 @@ class WatchService:
         Returns:
             CheckerState: The current state of the WatchService after starting
         """
+        start_time = time.time()
+        thread_id = str(current_thread())
+
+        # CRITICAL: State validation checks
         current_state = await get_checker_state()
+        shutdown_event_state = self._shutdown_event.is_set()
+
+        # Verify is_running vs shutdown_event consistency
+        if current_state.is_running != (not shutdown_event_state):
+            logger.error(
+                f"STATE INCONSISTENCY! is_running={current_state.is_running} shutdown_set={shutdown_event_state}"
+            )
+            logger.error("State machine inconsistency detected - attempting recovery")
+            # Recovery: Reset shutdown event if it contradicts is_running state
+            if current_state.is_running and shutdown_event_state:
+                logger.error(
+                    "CRITICAL: Service marked as running but shutdown event is set - clearing shutdown"
+                )
+                self._shutdown_event.clear()
+            elif not current_state.is_running and not shutdown_event_state:
+                logger.error(
+                    "CRITICAL: Service marked as stopped but shutdown event is clear - setting shutdown"
+                )
+                self._shutdown_event.set()
+
+        # Capture state snapshot
+        logger.info(
+            f"STATE SNAPSHOT before start: is_running={current_state.is_running}, shutdown_event={shutdown_event_state}, task={self._task}"
+        )
+
+        # TRACE: Entry point with initial state
+        self._log_trace_state(
+            "start_watch_service_entry", self._shutdown_event.is_set(), thread_id
+        )
+        logger.trace(
+            f"[{thread_id}] Starting WatchService with current retries: {current_state.retries_left}"
+        )
 
         if current_state.is_running:
-            logger.info("WatchService already running, returning current state")
-            return current_state
+            # Additional health check for already running service
+            if self._task and self._task.done():
+                logger.error(
+                    "HEALTH CHECK FAILURE: Service marked as running but task is completed - recovering"
+                )
+                await update_checker_state(is_running=False)
+                current_state = await get_checker_state()
+            else:
+                logger.info("WatchService already running, returning current state")
+                self._log_trace_timing(
+                    "start_watch_service_already_running", start_time, thread_id
+                )
+                return current_state
 
         try:
+            # CRITICAL FIX: Clear shutdown event before starting new task
+            # Without this, the background task terminates immediately after restart
+            # because the event is still set from the previous stop_watch_service() call
+            if self._shutdown_event.is_set():
+                logger.trace(
+                    f"[{thread_id}] CRITICAL: Shutdown event is SET before restart - clearing it"
+                )
+                logger.debug(
+                    "Clearing shutdown event from previous stop before restart"
+                )
+                self._shutdown_event.clear()
+
+            # TRACE: Shutdown event state after clear
+            self._log_trace_state(
+                "start_watch_service_after_clear",
+                self._shutdown_event.is_set(),
+                thread_id,
+            )
+
+            # Reset retry counter FIRST before playback check when restarting
+            # This allows restart after retry exhaustion when playback is available
+            if current_state.retries_left < 5:
+                logger.trace(
+                    f"[{thread_id}] Resetting retry counter from {current_state.retries_left} to 5"
+                )
+                logger.info(
+                    f"Resetting retry counter from {current_state.retries_left} to 5 for restart"
+                )
+                await update_checker_state(retries_left=5)
+                # Update local reference to reflect the reset
+                current_state = await get_checker_state()
+
+                logger.trace(
+                    f"[{thread_id}] Retry counter reset complete, new retries: {current_state.retries_left}"
+                )
+
             # Check for active playback before starting
-            if not await self._check_active_playback():
+            playback_start = time.time()
+            logger.trace(f"[{thread_id}] Starting playback check...")
+            playback_result = await self._check_active_playback()
+            self._log_trace_timing("playback_check", playback_start, thread_id)
+
+            logger.trace(f"[{thread_id}] Playback check result: {playback_result}")
+
+            if not playback_result:
+                logger.trace(
+                    f"[{thread_id}] No active playback detected, calculating new retry count"
+                )
                 new_retries_left = max(0, current_state.retries_left - 1)
                 await update_checker_state(retries_left=new_retries_left)
 
-                if current_state.retries_left <= 1:
+                if new_retries_left <= 0:
+                    logger.trace(
+                        f"[{thread_id}] No retries left ({new_retries_left}), failing start_watch_service"
+                    )
                     raise ValueError(
                         "No active playback detected. WatchService not started."
                     )
                 else:
+                    logger.trace(
+                        f"[{thread_id}] Playback check failed, retries left: {new_retries_left}"
+                    )
                     logger.warning(
                         f"No active playback detected. Retries left: {new_retries_left}"
+                    )
+                    self._log_trace_timing(
+                        "start_watch_service_no_playback", start_time, thread_id
                     )
                     return await get_checker_state()
 
             # Setze State auf "gestartet"
+            logger.trace(f"[{thread_id}] Setting service state to running...")
             settings = get_settings()
             await update_checker_state(
                 is_running=True,
@@ -91,14 +233,80 @@ class WatchService:
                 + timedelta(minutes=settings.watch_service_timeout_minutes),
             )
 
+            logger.trace(
+                f"[{thread_id}] Service state updated to running with {settings.watch_service_timeout_minutes}min timeout"
+            )
             logger.info("WatchService successfully started with asyncio")
 
             # Starte Background Task
-            self._task = asyncio.create_task(self._watch_loop())
+            logger.trace(f"[{thread_id}] Creating background task...")
+            task_start = time.time()
 
-            return await get_checker_state()
+            # Task lifecycle tracking
+            logger.debug(
+                f"Creating background task {id(self._task) if self._task else 'None'} -> {id(asyncio.current_task())}"
+            )
+
+            # Async task health check before creation
+            if self._task and not self._task.done():
+                logger.warning(
+                    f"Background task health check: existing task {id(self._task)} is still running"
+                )
+                # Clean up old task first
+                self._task.cancel()
+                with contextlib.suppress(
+                    asyncio.CancelledError, asyncio.InvalidStateError
+                ):
+                    await self._task
+
+            self._task = asyncio.create_task(self._watch_loop())
+            self._log_trace_timing("task_creation", task_start, thread_id)
+
+            logger.trace(
+                f"[{thread_id}] Background task created: {self._task}, task_id: {id(self._task)}"
+            )
+
+            # Immediate task health verification
+            if self._task.done():
+                logger.error(
+                    "CRITICAL: Background task completed immediately after creation!"
+                )
+                raise RuntimeError(
+                    "Background task terminated immediately after creation"
+                )
+
+            # TRACE: Final state validation with snapshot
+            self._log_trace_state(
+                "start_watch_service_final", self._shutdown_event.is_set(), thread_id
+            )
+            final_state = await get_checker_state()
+            final_shutdown_state = self._shutdown_event.is_set()
+
+            logger.info(
+                f"STATE SNAPSHOT after start: is_running={final_state.is_running}, shutdown_event={final_shutdown_state}, task_id={id(self._task)}"
+            )
+            logger.trace(
+                f"[{thread_id}] Final service state: running={final_state.is_running}, retries={final_state.retries_left}"
+            )
+
+            # Post-start validation
+            if final_state.is_running == final_shutdown_state:
+                logger.error(
+                    "POST-START VALIDATION FAILURE: is_running matches shutdown_event state (should be opposite)"
+                )
+                raise RuntimeError(
+                    "State machine validation failed after task creation"
+                )
+
+            self._log_trace_timing(
+                "start_watch_service_complete", start_time, thread_id
+            )
+            return final_state
 
         except Exception as e:
+            logger.trace(
+                f"[{thread_id}] Exception in start_watch_service: {type(e).__name__}: {e}"
+            )
             logger.error(f"Error starting WatchService: {e}")
             await update_checker_state(is_running=False)
             raise
@@ -109,7 +317,11 @@ class WatchService:
         Returns:
             CheckerState: The current state of the WatchService after stopping
         """
+        # Capture state snapshot before stopping
         current_state = await get_checker_state()
+        logger.info(
+            f"STATE SNAPSHOT before stop: is_running={current_state.is_running}, shutdown_event={self._shutdown_event.is_set()}, task={self._task}"
+        )
 
         if not current_state.is_running:
             logger.info("WatchService not running")
@@ -133,7 +345,14 @@ class WatchService:
             logger.error(f"Error stopping WatchService: {e}")
             raise
 
-        return await get_checker_state()
+        finally:
+            # Final state validation
+            final_state = await get_checker_state()
+            logger.info(
+                f"STATE SNAPSHOT after stop: is_running={final_state.is_running}, shutdown_event={self._shutdown_event.is_set()}"
+            )
+
+        return final_state
 
     async def get_state(self) -> CheckerState:
         """Returns the current WatchService State.
@@ -173,30 +392,95 @@ class WatchService:
         4. Handles retry attempts and stop conditions
         5. Waits configurable time before next iteration
         """
+        thread_id = str(current_thread())
         logger.info("WatchService Background Task started")
 
+        # TRACE: Task loop entry point
+        logger.trace(
+            f"[{thread_id}] _watch_loop task started, task_id: {id(asyncio.current_task())}"
+        )
+
+        # Task lifecycle tracking - log task creation
+        logger.debug(f"Task lifecycle: CREATED task_id={id(asyncio.current_task())}")
+
         try:
+            iteration_count = 0
+            settings = (
+                get_settings()
+            )  # Move settings outside loop to avoid scope issues
             while not self._shutdown_event.is_set():
-                await self._execute_clear_task()
+                iteration_count += 1
+                logger.trace(
+                    f"[{thread_id}] Starting watch loop iteration {iteration_count}"
+                )
+
+                loop_start = time.time()
+                self._log_trace_state(
+                    "watch_loop_iteration_start",
+                    self._shutdown_event.is_set(),
+                    thread_id,
+                )
+
+                try:
+                    await self._execute_clear_task()
+                except Exception as e:
+                    logger.trace(
+                        f"[{thread_id}] Exception in _execute_clear_task: {type(e).__name__}: {e}"
+                    )
+                    raise
+
+                self._log_trace_timing(
+                    f"watch_loop_iteration_{iteration_count}", loop_start, thread_id
+                )
 
                 # Warte konfigurierbare Zeit oder bis Shutdown Signal
                 try:
-                    settings = get_settings()
+                    timeout = (
+                        settings.watch_service_timeout_minutes * 60.0
+                    )  # in seconds
+                    logger.trace(
+                        f"[{thread_id}] Waiting for shutdown event or {settings.watch_service_timeout_minutes}min timeout..."
+                    )
+
                     await asyncio.wait_for(
                         self._shutdown_event.wait(),
-                        timeout=settings.watch_service_timeout_minutes
-                        * 60.0,  # in seconds
+                        timeout=timeout,
+                    )
+                    logger.trace(
+                        f"[{thread_id}] Shutdown signal received, breaking loop"
                     )
                     break  # Shutdown Signal erhalten
                 except TimeoutError:
+                    logger.trace(
+                        f"[{thread_id}] Timeout reached after {settings.watch_service_timeout_minutes}min, starting next iteration"
+                    )
                     continue  # 10 Minuten vorbei, nächster Durchlauf
 
         except asyncio.CancelledError:
+            logger.trace(f"[{thread_id}] WatchService Background Task was cancelled")
             logger.info("WatchService Background Task cancelled")
+            # Task lifecycle tracking - log task cancellation
+            logger.debug(
+                f"Task lifecycle: CANCELLED task_id={id(asyncio.current_task())}"
+            )
         except Exception as e:
+            logger.trace(
+                f"[{thread_id}] Unexpected error in WatchService Loop: {type(e).__name__}: {e}"
+            )
             logger.error(f"Unexpected error in WatchService Loop: {e}")
+            # Task lifecycle tracking - log task error
+            logger.debug(
+                f"Task lifecycle: ERROR task_id={id(asyncio.current_task())} error={e}"
+            )
         finally:
+            logger.trace(
+                f"[{thread_id}] WatchService Background Task ending after {iteration_count} iterations"
+            )
             logger.info("WatchService Background Task ended")
+            # Task lifecycle tracking - log task destruction
+            logger.debug(
+                f"Task lifecycle: DESTROYED task_id={id(asyncio.current_task())} iterations={iteration_count}"
+            )
 
     async def _execute_clear_task(self) -> None:
         """Führt den Background Task zum Löschen abgespielter Tracks aus.
