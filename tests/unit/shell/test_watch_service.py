@@ -15,6 +15,7 @@ COMMON ISSUES:
 """
 
 import asyncio
+import contextlib
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -1633,3 +1634,125 @@ async def test_retry_counter_resets_to_5_after_playback_detection(
                     assert playback_detected_found, (
                         "last_playback_detected sollte aktualisiert werden"
                     )
+
+
+async def test_watch_service_restart_clears_shutdown_event(
+    watch_service_instance, mock_spotify_client
+):
+    """Test restart functionality clears shutdown event correctly (Zeilen 72-76).
+
+    This test ensures the specific restart code path is executed:
+    1. Start a WatchService
+    2. Stop the service (this sets _shutdown_event)
+    3. Start the service again (this triggers the shutdown event clearing code)
+    4. Verify that _shutdown_event is correctly cleared
+    """
+    # Mock initial state (not running)
+    with patch("src.shell.watch_service.get_checker_state") as mock_get_state:
+        initial_state = Mock()
+        initial_state.is_running = False
+        initial_state.retries_left = 5
+        initial_state.last_playback_detected = False
+        initial_state.last_checked = None
+        initial_state.next_check = None
+
+        # Updated state (after start)
+        updated_state = Mock()
+        updated_state.is_running = True
+        updated_state.retries_left = 5
+        updated_state.last_playback_detected = True
+        updated_state.last_checked = datetime.now()
+        updated_state.next_check = datetime.now() + timedelta(minutes=10)
+
+        mock_get_state.side_effect = [initial_state, updated_state]
+
+        # Mock active playback for successful start
+        mock_spotify_client.get_current_playback.return_value = Success(
+            {"is_playing": True, "context": {"uri": "spotify:playlist:test"}}
+        )
+
+        # Mock settings
+        with patch("src.shell.watch_service.get_settings") as mock_get_settings:
+            mock_settings = Mock()
+            mock_settings.spotify_playlist_id = "test_playlist"
+            mock_settings.playlist_autofill_count = 150
+            mock_settings.watch_service_timeout_minutes = 10
+            mock_get_settings.return_value = mock_settings
+
+            # Mock update state calls
+            with patch("src.shell.watch_service.update_checker_state") as mock_update:
+                mock_update.return_value = updated_state
+
+                # ===== PART 1: First start =====
+                result1 = await watch_service_instance.start_watch_service()
+
+                # Verify service started successfully
+                assert result1.is_running
+                assert watch_service_instance._task is not None
+                assert not watch_service_instance._shutdown_event.is_set()
+
+                # ===== PART 2: Stop the service =====
+                # Set running state for stop operation
+                running_state = Mock()
+                running_state.is_running = True
+                mock_get_state.return_value = running_state
+
+                # Mock stopped state after stop
+                stopped_state = Mock()
+                stopped_state.is_running = False
+                stopped_state.next_check = None
+                mock_update.side_effect = [updated_state, stopped_state]
+
+                # Mock get_checker_state to return stopped state after stop
+                mock_get_state.side_effect = [
+                    running_state,
+                    stopped_state,
+                    initial_state,
+                    updated_state,
+                ]
+
+                # Stop the service
+                await watch_service_instance.stop_watch_service()
+
+                # Verify service is stopped and shutdown event is set
+                assert watch_service_instance._shutdown_event.is_set()
+                assert (
+                    watch_service_instance._task is None
+                    or watch_service_instance._task.done()
+                )
+
+                # ===== PART 3: Restart the service (this triggers the shutdown clearing code) =====
+                # Reset side effects for restart
+                mock_update.side_effect = [
+                    updated_state
+                ]  # Just the start update for restart
+                mock_get_state.side_effect = [initial_state, updated_state]
+
+                # This is the critical part - the restart should trigger the shutdown event clearing
+                # We expect this to be called because the shutdown event is currently set
+                with patch("src.shell.watch_service.logger") as mock_logger:
+                    result2 = await watch_service_instance.start_watch_service()
+
+                    # Verify restart was successful
+                    assert result2.is_running
+                    assert watch_service_instance._task is not None
+
+                    # CRITICAL VERIFICATION: The shutdown event should be cleared by the restart
+                    assert not watch_service_instance._shutdown_event.is_set(), (
+                        "Shutdown event should be cleared during restart (Zeilen 72-76)"
+                    )
+
+                    # Verify the debug log message was logged (confirming the restart code path was taken)
+                    mock_logger.debug.assert_called_with(
+                        "Clearing shutdown event from previous stop before restart"
+                    )
+
+    # Ensure no ResourceWarnings by properly cleaning up any remaining tasks
+    if watch_service_instance._task and not watch_service_instance._task.done():
+        try:
+            watch_service_instance._shutdown_event.set()
+            watch_service_instance._task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await watch_service_instance._task
+        except Exception:
+            pass  # Cleanup should not affect test results
