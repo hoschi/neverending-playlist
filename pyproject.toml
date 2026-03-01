@@ -177,3 +177,5 @@ check-all = [
 ]
 typecheck = ["typecheck-basedpyright", "typecheck-mypy"]
 quick-check = ["format", "lint", "typecheck-basedpyright"]
+# local server like start function
+start = "python src/shell/api.py"
