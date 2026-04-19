@@ -19,17 +19,11 @@ class Settings(BaseSettings):
     song_source: Literal["SUPABASE", "SQLITE"] = "SUPABASE"
 
     # SQLite backend
-    sqlite_db_path: str = "current/neverending_songs.db"
+    sqlite_db_path: str = "neverending_songs.db"
     sqlite_max_size_bytes: int = 10 * 1024 * 1024 * 1024
 
-    # NeverendingSongs source defaults
-    neverending_songs_source_name: str = "radio_bob"
-    neverending_songs_rest_url: str = "https://iris-bob.loverad.io/search.json"
-    neverending_songs_station: int = 110
-    neverending_songs_jq_mapping: str = (
-        ".result.entry[] | {artist: .song.entry[0].artist.entry[0].name, "
-        'song: .song.entry[0].title, airtime: .airtime, source: "radio_bob"}'
-    )
+    # Source URLs for NeverendingSongs import (must be provided via env)
+    song_source_rest_urls: list[str]
 
     # Notifications
     enable_mac_notifications: bool = False

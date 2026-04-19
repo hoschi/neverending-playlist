@@ -7,8 +7,7 @@ def main() -> None:
     print("song_source:", settings.song_source)
     print("sqlite_db_path:", settings.sqlite_db_path)
     print("sqlite_max_size_bytes:", settings.sqlite_max_size_bytes)
-    print("neverending_songs_source_name:", settings.neverending_songs_source_name)
-    print("neverending_songs_station:", settings.neverending_songs_station)
+    print("song_source_rest_urls:", settings.song_source_rest_urls)
     print("enable_mac_notifications:", settings.enable_mac_notifications)
 
 

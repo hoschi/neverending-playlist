@@ -18,7 +18,9 @@ Dieser Plan integriert die NeverendingSongs-Importlogik direkt in Neverending Pl
    - `current/songs_last_20min_sample.json` mit realen Treffern (20-Minuten-Fenster) stabilisieren.
    - Mapping der alten n8n-Logik als dokumentierte Feldpfade erfassen (Input -> Zielschema).
    - Neue Core-Modelle für Import-Records, Source-Config, Mapping-Config (jq-Syntax), Job-Status.
-   - Settings erweitern: Datenquellenwahl (`SUPABASE|SQLITE`), SQLite-Pfad, SQLite-Maxgröße (z. B. 10GB), Notification-Flag.
+   - Settings erweitern: Datenquellenwahl (`SUPABASE|SQLITE`), SQLite-Pfad im Repo-Root, SQLite-Maxgröße (z. B. 10GB), Notification-Flag.
+   - Für Importquellen nur eine konfigurierbare URL-Liste (mehrere Quellen möglich), ohne Defaults im Code.
+   - `source` wird nicht konfiguriert, sondern aus der Domain der jeweiligen URL abgeleitet.
    - Festes SQLite-Schema definieren (Supabase-kompatibel + Importmetadaten wie `airtime`, `source`).
    - `implementation.md` anlegen (Zielbild, Constraints, erstes Mermaid-Diagramm).
    - **Testbar:** Referenz-JSON + Mapping-Design vorhanden, App startet mit neuen Env-Defaults, Konfiguration lädt korrekt.

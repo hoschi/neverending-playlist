@@ -46,12 +46,7 @@ class SongRequest(BaseModel):
 class NeverendingSongsSourceConfig(BaseModel):
     """Configuration for one REST source used by NeverendingSongs."""
 
-    name: str = Field(..., description="Unique source name.")
     rest_url: str = Field(..., description="REST endpoint URL for source data.")
-    station: int = Field(..., description="Station identifier sent to the source API.")
-    jq_mapping: str = Field(
-        ..., description="jq expression to map source payload to rows."
-    )
 
 
 class NeverendingSongsMappedRecord(BaseModel):

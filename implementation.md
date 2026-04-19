@@ -7,6 +7,8 @@ Dieses Dokument beschreibt die integrierte NeverendingSongs-Logik innerhalb von 
 - Die bisherige n8n-Importlogik wird in den Server integriert.
 - Importierte Songs landen in einer festen SQLite-Struktur.
 - Die Playlist-Synchronisierung kann zwischen `SUPABASE` und `SQLITE` umschalten.
+- Die Importquellen werden ausschließlich über eine URL-Liste (`SONG_SOURCE_REST_URLS`) konfiguriert.
+- Der `source`-Wert wird aus der Domain der jeweiligen URL abgeleitet.
 - Der Datenfluss bleibt nachvollziehbar und testbar.
 
 ## Feldmapping (n8n -> jq -> Zielstruktur)
@@ -17,14 +19,14 @@ Historische n8n-Feldpfade aus `current/n8n_workflow.json`:
 - `song = $json.song.entry[0].title`
 - `airtime = $json.airtime`
 
-Aktuelle jq-Zielstruktur (Basis):
+Aktuelle jq-Zielstruktur (Basis, `source` als Variable):
 
 ```jq
 .result.entry[] | {
   artist: .song.entry[0].artist.entry[0].name,
   song: .song.entry[0].title,
   airtime: .airtime,
-  source: "radio_bob"
+  source: $source
 }
 ```
 
