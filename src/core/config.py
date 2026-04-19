@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,6 +14,25 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_key: str
     supabase_table: str
+
+    # Song source backend
+    song_source: Literal["SUPABASE", "SQLITE"] = "SUPABASE"
+
+    # SQLite backend
+    sqlite_db_path: str = "current/neverending_songs.db"
+    sqlite_max_size_bytes: int = 10 * 1024 * 1024 * 1024
+
+    # NeverendingSongs source defaults
+    neverending_songs_source_name: str = "radio_bob"
+    neverending_songs_rest_url: str = "https://iris-bob.loverad.io/search.json"
+    neverending_songs_station: int = 110
+    neverending_songs_jq_mapping: str = (
+        ".result.entry[] | {artist: .song.entry[0].artist.entry[0].name, "
+        'song: .song.entry[0].title, airtime: .airtime, source: "radio_bob"}'
+    )
+
+    # Notifications
+    enable_mac_notifications: bool = False
 
     # Spotify
     spotify_client_id: str

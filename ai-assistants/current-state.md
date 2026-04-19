@@ -1,6 +1,6 @@
 # Current State
 
-**Zuletzt aktualisiert:** 27. November 2025, 16:50 UTC
+**Zuletzt aktualisiert:** 19. April 2026, 15:10 UTC
 
 ## Repository Overview
 
@@ -21,8 +21,9 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 #### src/core/
 
 - **`__init__.py`** - Leere Core-Package Initialisierung.
-- **`config.py`** - Pydantic Settings für alle Konfigurationsvariablen, inklusive Supabase, Spotify OAuth und dem Encryption Key. Lädt aus `.env`. `playlist_autofill_count` für automatische Playlist-Auffüllung. `watch_service_timeout_minutes` für konfigurierbares Timeout-Intervall des Watchmode-Features (Standard: 10 Minuten).
-- **`models.py`** - Pydantic Datenmodelle: `Song`, `SongRequest`, `UserAuthorization` für die Spotify-OAuth-Daten, `SongAdditionStatus`-Enum, `SyncPlaylistResult`, `SyncFailure`, `SyncResult`, `ClearPlayedTracksResponse` (nur `deleted_count` und `filled_count`) und `PlaylistClearFailure`.
+- **`config.py`** - Pydantic Settings für Supabase/Spotify sowie neue NeverendingSongs-Basiskonfiguration: umschaltbare Song-Quelle (`SUPABASE|SQLITE`), SQLite-Pfad und Maximalgröße, REST-Source-Defaults inkl. jq-Mapping und optionaler macOS-Notification-Flag. Lädt aus `.env` und enthält weiterhin Autofill- und Watch-Service-Settings.
+- **`models.py`** - Pydantic Datenmodelle und Enums für Playlist-Sync sowie NeverendingSongs-Basisdomäne: zusätzliche Backends/Import-Status-Enums, Source-Konfiguration, gemappte Import-Datensätze und Import-Run-Summary. Enthält weiterhin `Song`, `SongRequest`, `SyncResult`/`SyncFailure` und Playlist-Clear Modelle.
+- **`sqlite_schema.py`** - Definiert das feste SQLite-Schema als gemeinsame Schnittstelle für Import und Playlist-Sync: `song_requests` (inkl. `airtime`/`source`) und `neverending_songs_runs` für Laufhistorie, jeweils als zentrale SQL-Statements.
 - **`protocols.py`** - Definiert die `SupabaseClient` und `SpotifyClient` Protokolle mit `@runtime_checkable`, um die Entkopplung zwischen Shell und Core zu gewährleisten. `SpotifyClient` um `get_current_playback`, `get_playlist_items`, `remove_items_from_playlist`.
 
 #### src/core/services/

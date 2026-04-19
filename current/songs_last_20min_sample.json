@@ -1,3 +1,264 @@
 {
                     "result": {
-                    "found": "0"}}
+                    "found": "5",
+                    "entry": [{"airtime":"2026-04-18T07:17:16+02:00","duration":"229",
+                            "song": {
+                              "found": "1",
+                              "entry": [
+                                {
+                                  "guid": "ed1c9912-d4da-4fc0-d221-93993fb445f9",
+                                  "title": "Run to the Hills",
+                                  "affiliate_url": "https://music.apple.com/de/album/run-to-the-hills/979953728?i=979954060&uo=4",
+                                  "cover_art_url_xs": "https://is4-ssl.mzstatic.com/image/thumb/Music125/v4/89/61/0f/89610f27-42a4-f089-7bb6-631fc5907b93/source/30x30bb.jpg",
+                                  "cover_art_url_s": "https://is4-ssl.mzstatic.com/image/thumb/Music125/v4/89/61/0f/89610f27-42a4-f089-7bb6-631fc5907b93/source/60x60bb.jpg",
+                                  "cover_art_url_m": "https://is4-ssl.mzstatic.com/image/thumb/Music125/v4/89/61/0f/89610f27-42a4-f089-7bb6-631fc5907b93/source/100x100bb.jpg",
+                                  "cover_art_url_l": "https://is4-ssl.mzstatic.com/image/thumb/Music125/v4/89/61/0f/89610f27-42a4-f089-7bb6-631fc5907b93/source/225x225bb.jpg",
+                                  "cover_art_url_xl": "https://is4-ssl.mzstatic.com/image/thumb/Music125/v4/89/61/0f/89610f27-42a4-f089-7bb6-631fc5907b93/source/600x600bb.jpg",
+                                  "cover_art_url_xxl": "https://is4-ssl.mzstatic.com/image/thumb/Music125/v4/89/61/0f/89610f27-42a4-f089-7bb6-631fc5907b93/source/1200x1200bb.jpg",
+                                  "preview_hook_url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/dd/4c/98/dd4c98e4-15da-accf-82ab-45c04a72c47a/mzaf_14731429193732508503.plus.aac.p.m4a",
+                                  "cover_art_url_custom": "",
+                                  "price": "",
+                                  "release_date": "",
+                                  "genre": "",
+                                  "collection_name": "",
+                                  "collection_url": "",
+                                  "video": {
+                                    "title": "",
+                                    "link": "",
+                                    "pub_date": "",
+                                    "description": "",
+                                    "keywords": "",
+                                    "copyright": "",
+                                    "duration": "",
+                                    "credit_artist": "",
+                                    "credit_distribution_company": "",
+                                    "category": "",
+                                    "video_player_embed_tag": ""
+                                  },
+                                  "tags": {},
+                                  "artist": {
+                                    "found": "1",
+                                    "entry": [
+                                      {
+                                        "guid": "",
+                                        "name": "Iron Maiden",
+                                        "affiliate_url": "",
+                                        "realname": "",
+                                        "urls": {},
+                                        "image": "",
+                                        "tags": {}
+                                      }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          },{"airtime":"2026-04-18T07:13:41+02:00","duration":"174",
+                            "song": {
+                              "found": "1",
+                              "entry": [
+                                {
+                                  "guid": "14e9e490-be1f-4707-2f9d-a8040cff08e0",
+                                  "title": "We Are the Champions",
+                                  "affiliate_url": "https://music.apple.com/de/album/we-are-the-champions/1440821736?i=1440822123&uo=4",
+                                  "cover_art_url_xs": "https://is5-ssl.mzstatic.com/image/thumb/Music115/v4/ca/32/84/ca328469-eb50-9710-2b44-7be172d04e56/source/30x30bb.jpg",
+                                  "cover_art_url_s": "https://is5-ssl.mzstatic.com/image/thumb/Music115/v4/ca/32/84/ca328469-eb50-9710-2b44-7be172d04e56/source/60x60bb.jpg",
+                                  "cover_art_url_m": "https://is5-ssl.mzstatic.com/image/thumb/Music115/v4/ca/32/84/ca328469-eb50-9710-2b44-7be172d04e56/source/100x100bb.jpg",
+                                  "cover_art_url_l": "https://is5-ssl.mzstatic.com/image/thumb/Music115/v4/ca/32/84/ca328469-eb50-9710-2b44-7be172d04e56/source/225x225bb.jpg",
+                                  "cover_art_url_xl": "https://is5-ssl.mzstatic.com/image/thumb/Music115/v4/ca/32/84/ca328469-eb50-9710-2b44-7be172d04e56/source/600x600bb.jpg",
+                                  "cover_art_url_xxl": "https://is5-ssl.mzstatic.com/image/thumb/Music115/v4/ca/32/84/ca328469-eb50-9710-2b44-7be172d04e56/source/1200x1200bb.jpg",
+                                  "preview_hook_url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/a6/21/81/a621811d-1e85-9cb9-4c39-0f4f1d8d9140/mzaf_8853089026373788388.plus.aac.p.m4a",
+                                  "cover_art_url_custom": "",
+                                  "price": "",
+                                  "release_date": "",
+                                  "genre": "",
+                                  "collection_name": "",
+                                  "collection_url": "",
+                                  "video": {
+                                    "title": "",
+                                    "link": "",
+                                    "pub_date": "",
+                                    "description": "",
+                                    "keywords": "",
+                                    "copyright": "",
+                                    "duration": "",
+                                    "credit_artist": "",
+                                    "credit_distribution_company": "",
+                                    "category": "",
+                                    "video_player_embed_tag": ""
+                                  },
+                                  "tags": {},
+                                  "artist": {
+                                    "found": "1",
+                                    "entry": [
+                                      {
+                                        "guid": "",
+                                        "name": "Queen",
+                                        "affiliate_url": "",
+                                        "realname": "",
+                                        "urls": {},
+                                        "image": "",
+                                        "tags": {}
+                                      }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          },{"airtime":"2026-04-18T07:06:41+02:00","duration":"305",
+                            "song": {
+                              "found": "1",
+                              "entry": [
+                                {
+                                  "guid": "66db3f9b-ef33-411b-12c0-2e0cc08d6c9d",
+                                  "title": "Crazy",
+                                  "affiliate_url": "https://music.apple.com/de/album/crazy/1440917484?i=1440917793&uo=4",
+                                  "cover_art_url_xs": "https://is5-ssl.mzstatic.com/image/thumb/Music128/v4/1c/1e/e3/1c1ee305-8e2b-4eed-2a70-48633c8e0307/source/30x30bb.jpg",
+                                  "cover_art_url_s": "https://is5-ssl.mzstatic.com/image/thumb/Music128/v4/1c/1e/e3/1c1ee305-8e2b-4eed-2a70-48633c8e0307/source/60x60bb.jpg",
+                                  "cover_art_url_m": "https://is5-ssl.mzstatic.com/image/thumb/Music128/v4/1c/1e/e3/1c1ee305-8e2b-4eed-2a70-48633c8e0307/source/100x100bb.jpg",
+                                  "cover_art_url_l": "https://is5-ssl.mzstatic.com/image/thumb/Music128/v4/1c/1e/e3/1c1ee305-8e2b-4eed-2a70-48633c8e0307/source/225x225bb.jpg",
+                                  "cover_art_url_xl": "https://is5-ssl.mzstatic.com/image/thumb/Music128/v4/1c/1e/e3/1c1ee305-8e2b-4eed-2a70-48633c8e0307/source/600x600bb.jpg",
+                                  "cover_art_url_xxl": "https://is5-ssl.mzstatic.com/image/thumb/Music128/v4/1c/1e/e3/1c1ee305-8e2b-4eed-2a70-48633c8e0307/source/1200x1200bb.jpg",
+                                  "preview_hook_url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/76/cc/80/76cc80a9-6fde-35fb-9fff-7e460649baf9/mzaf_11970556616030815464.plus.aac.p.m4a",
+                                  "cover_art_url_custom": "",
+                                  "price": "",
+                                  "release_date": "",
+                                  "genre": "",
+                                  "collection_name": "",
+                                  "collection_url": "",
+                                  "video": {
+                                    "title": "",
+                                    "link": "",
+                                    "pub_date": "",
+                                    "description": "",
+                                    "keywords": "",
+                                    "copyright": "",
+                                    "duration": "",
+                                    "credit_artist": "",
+                                    "credit_distribution_company": "",
+                                    "category": "",
+                                    "video_player_embed_tag": ""
+                                  },
+                                  "tags": {},
+                                  "artist": {
+                                    "found": "1",
+                                    "entry": [
+                                      {
+                                        "guid": "",
+                                        "name": "Aerosmith",
+                                        "affiliate_url": "",
+                                        "realname": "",
+                                        "urls": {},
+                                        "image": "",
+                                        "tags": {}
+                                      }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          },{"airtime":"2026-04-18T07:04:01+02:00","duration":"151",
+                            "song": {
+                              "found": "1",
+                              "entry": [
+                                {
+                                  "guid": "96106f7a-d3ee-4e30-c00b-425038b9852f",
+                                  "title": "9 Lives",
+                                  "affiliate_url": "https://music.apple.com/de/album/9-lives/1868641950?i=1868641955&uo=4",
+                                  "cover_art_url_xs": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/c6/0e/92/c60e928c-af06-d8e1-38ab-9ac4a35df1dd/196873995274.jpg/30x30bb.jpg",
+                                  "cover_art_url_s": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/c6/0e/92/c60e928c-af06-d8e1-38ab-9ac4a35df1dd/196873995274.jpg/60x60bb.jpg",
+                                  "cover_art_url_m": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/c6/0e/92/c60e928c-af06-d8e1-38ab-9ac4a35df1dd/196873995274.jpg/100x100bb.jpg",
+                                  "cover_art_url_l": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/c6/0e/92/c60e928c-af06-d8e1-38ab-9ac4a35df1dd/196873995274.jpg/225x225bb.jpg",
+                                  "cover_art_url_xl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/c6/0e/92/c60e928c-af06-d8e1-38ab-9ac4a35df1dd/196873995274.jpg/600x600bb.jpg",
+                                  "cover_art_url_xxl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/c6/0e/92/c60e928c-af06-d8e1-38ab-9ac4a35df1dd/196873995274.jpg/1200x1200bb.jpg",
+                                  "preview_hook_url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/01/4e/1b/014e1b92-6b6f-d561-bbcc-3287dc9f5930/mzaf_6545351656309165305.plus.aac.p.m4a",
+                                  "cover_art_url_custom": "",
+                                  "price": "",
+                                  "release_date": "",
+                                  "genre": "",
+                                  "collection_name": "",
+                                  "collection_url": "",
+                                  "video": {
+                                    "title": "",
+                                    "link": "",
+                                    "pub_date": "",
+                                    "description": "",
+                                    "keywords": "",
+                                    "copyright": "",
+                                    "duration": "",
+                                    "credit_artist": "",
+                                    "credit_distribution_company": "",
+                                    "category": "",
+                                    "video_player_embed_tag": ""
+                                  },
+                                  "tags": {},
+                                  "artist": {
+                                    "found": "1",
+                                    "entry": [
+                                      {
+                                        "guid": "",
+                                        "name": "Fury In the Slaughterhouse",
+                                        "affiliate_url": "",
+                                        "realname": "",
+                                        "urls": {},
+                                        "image": "",
+                                        "tags": {}
+                                      }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          },{"airtime":"2026-04-18T07:00:18+02:00","duration":"219",
+                            "song": {
+                              "found": "1",
+                              "entry": [
+                                {
+                                  "guid": "07fc0668-0612-43b7-8e5c-62edabbdf1fe",
+                                  "title": "Bring Me Some Water",
+                                  "affiliate_url": "https://music.apple.com/de/album/bring-me-some-water/1440865468?i=1440866235&uo=4",
+                                  "cover_art_url_xs": "https://is5-ssl.mzstatic.com/image/thumb/Music125/v4/89/8b/63/898b6306-e6b3-f533-9981-f7c0aa1fef65/source/30x30bb.jpg",
+                                  "cover_art_url_s": "https://is5-ssl.mzstatic.com/image/thumb/Music125/v4/89/8b/63/898b6306-e6b3-f533-9981-f7c0aa1fef65/source/60x60bb.jpg",
+                                  "cover_art_url_m": "https://is5-ssl.mzstatic.com/image/thumb/Music125/v4/89/8b/63/898b6306-e6b3-f533-9981-f7c0aa1fef65/source/100x100bb.jpg",
+                                  "cover_art_url_l": "https://is5-ssl.mzstatic.com/image/thumb/Music125/v4/89/8b/63/898b6306-e6b3-f533-9981-f7c0aa1fef65/source/225x225bb.jpg",
+                                  "cover_art_url_xl": "https://is5-ssl.mzstatic.com/image/thumb/Music125/v4/89/8b/63/898b6306-e6b3-f533-9981-f7c0aa1fef65/source/600x600bb.jpg",
+                                  "cover_art_url_xxl": "https://is5-ssl.mzstatic.com/image/thumb/Music125/v4/89/8b/63/898b6306-e6b3-f533-9981-f7c0aa1fef65/source/1200x1200bb.jpg",
+                                  "preview_hook_url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/99/2e/b4/992eb401-379e-63f4-5287-2f4e484500f5/mzaf_17854899322744967475.plus.aac.p.m4a",
+                                  "cover_art_url_custom": "",
+                                  "price": "",
+                                  "release_date": "",
+                                  "genre": "",
+                                  "collection_name": "",
+                                  "collection_url": "",
+                                  "video": {
+                                    "title": "",
+                                    "link": "",
+                                    "pub_date": "",
+                                    "description": "",
+                                    "keywords": "",
+                                    "copyright": "",
+                                    "duration": "",
+                                    "credit_artist": "",
+                                    "credit_distribution_company": "",
+                                    "category": "",
+                                    "video_player_embed_tag": ""
+                                  },
+                                  "tags": {},
+                                  "artist": {
+                                    "found": "1",
+                                    "entry": [
+                                      {
+                                        "guid": "",
+                                        "name": "Melissa Etheridge",
+                                        "affiliate_url": "",
+                                        "realname": "",
+                                        "urls": {},
+                                        "image": "",
+                                        "tags": {}
+                                      }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          }]}}
