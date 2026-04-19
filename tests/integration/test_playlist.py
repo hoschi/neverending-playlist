@@ -414,3 +414,13 @@ async def test_sync_playlist_failure(
 
     # Clean up
     app.dependency_overrides = {}
+
+
+# Clear Played Watchmode Integration Tests (Moved to Unit Tests)
+# The following tests have been moved to tests/unit/shell/test_api.py:
+# - test_clear_played_watchmode_already_active
+# - test_clear_played_watchmode_no_active_playback
+# - test_clear_played_watchmode_started_successfully
+# - test_clear_played_watchmode_start_failed
+# - test_clear_played_watchmode_playback_check_failed
+# - test_clear_played_watchmode_unexpected_error

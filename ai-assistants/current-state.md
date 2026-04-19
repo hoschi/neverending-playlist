@@ -1,6 +1,6 @@
 # Current State
 
-**Zuletzt aktualisiert:** 20. November 2025, 17:31 UTC
+**Zuletzt aktualisiert:** 27. November 2025, 16:50 UTC
 
 ## Repository Overview
 
@@ -21,7 +21,7 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 #### src/core/
 
 - **`__init__.py`** - Leere Core-Package Initialisierung.
-- **`config.py`** - Pydantic Settings für alle Konfigurationsvariablen, inklusive Supabase, Spotify OAuth und dem Encryption Key. Lädt aus `.env`. `playlist_autofill_count` für automatische Playlist-Auffüllung.
+- **`config.py`** - Pydantic Settings für alle Konfigurationsvariablen, inklusive Supabase, Spotify OAuth und dem Encryption Key. Lädt aus `.env`. `playlist_autofill_count` für automatische Playlist-Auffüllung. `watch_service_timeout_minutes` für konfigurierbares Timeout-Intervall des Watchmode-Features (Standard: 10 Minuten).
 - **`models.py`** - Pydantic Datenmodelle: `Song`, `SongRequest`, `UserAuthorization` für die Spotify-OAuth-Daten, `SongAdditionStatus`-Enum, `SyncPlaylistResult`, `SyncFailure`, `SyncResult`, `ClearPlayedTracksResponse` (nur `deleted_count` und `filled_count`) und `PlaylistClearFailure`.
 - **`protocols.py`** - Definiert die `SupabaseClient` und `SpotifyClient` Protokolle mit `@runtime_checkable`, um die Entkopplung zwischen Shell und Core zu gewährleisten. `SpotifyClient` um `get_current_playback`, `get_playlist_items`, `remove_items_from_playlist`.
 
@@ -36,18 +36,20 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 #### src/shell/
 
 - **`__init__.py`** - Leere Shell-Package Initialisierung.
-- **`api.py`** - FastAPI Web-Interface. Stellt die Endpunkte `/login` und `/callback` für den OAuth-Flow sowie **`/sync-playlist`** (gibt 207 bei partial failure, sonst strukturierte Erfolge) für die Playlist-Synchronisation und **`/clear-played`** für das Entfernen von abgespielten Tracks bereit. `/clear-played` nutzt auch SupabaseClient für Autofill-Funktionalität.
+- **`api.py`** - FastAPI Web-Interface. Stellt die Endpunkte `/login` und `/callback` für den OAuth-Flow sowie **`/sync-playlist`** (gibt 207 bei partial failure, sonst strukturierte Erfolge) für die Playlist-Synchronisation, **`/clear-played`** für das Entfernen von abgespielten Tracks und **`GET /clear-played-watchmode`** für die Aktivierung/Status-Abfrage des Watchmode-Features bereit. **`Korrektur`** des `/clear-played-watchmode` Endpunkts: Entfernte manuelle `next_check` Berechnung und verwendet jetzt direkt die Werte aus `CheckerState` für konsistente State-Verwaltung. `/clear-played` nutzt auch SupabaseClient für Autofill-Funktionalität.
 - **`clients.py`** - Enthält die konkreten Implementierungen `ConcreteSupabaseClient` und `ConcreteSpotifyClient`, die die in `core/protocols.py` definierten Protokolle erfüllen. `ConcreteSpotifyClient` um die neuen Methoden für Playback-Check und Track-Entfernung.
-- **`cli.py`** - Ein einfacher Typer-CLI-Einstiegspunkt, der die `main`-Funktion für die API startet.
 - **`logging_config.py`** - Konfiguriert `Loguru` für strukturiertes Logging basierend auf den Einstellungen in `config.py`.
+- **`state.py`** - Singleton-basiertes In-Memory State Management für den Watchmode WatchService. Thread-Safe Implementation mit `asyncio.Lock` für globalen Zustand.
+- **`watch_service.py`** - Service-Klasse für das Watchmode-Feature. Implementiert die automatische Überwachung und Bereinigung von abgespielten Tracks mit konfigurierbaren Intervallen basierend auf `WATCH_SERVICE_TIMEOUT_MINUTES`. Verwendet `state.py` für State-Management. Startet Background-Tasks mit asyncio, prüft aktives Playback und führt automatisches Löschen durch. Retry-Counter wird nun korrekt zurückgesetzt, wenn Playback nach einem Stop wieder erkannt wird.
+- **`cli.py`** - Ein einfacher Typer-CLI-Einstiegspunkt, der die `main`-Funktion für die API startet.
 
 ## Testabdeckung
 
-- **Unit-Tests:** Testen Core Logik in `core/services/` und `core/models.py`
-- **Integrationstests:** Testen den vollständigen Sync-Flow und API-Endpunkte
+- **Unit-Tests:** Testen Core Logik in `core/services/` und `core/models.py`, sowie Shell-Komponenten in `src/shell/` (inklusive WatchService)
+- **Integrationstests:** Testen den vollständigen Sync-Flow und API-Endpunkte, inklusive Watchmode-Funktionalität
 - **Contract-Tests:** Testen die API-Spezifikation mit `/sync-playlist` Endpunkt
 
 ## Development Setup
 
-**Tools:** Ruff (Lint+Format), MyPy (Strict Typing), Pytest (95% Coverage), Poetry, Poe Tasks
+**Tools:** Ruff (Lint+Format), MyPy (Strict Typing), Pytest, Poetry, Poe Tasks
 **Environment:** Python 3.12, Conda

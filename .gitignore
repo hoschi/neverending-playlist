@@ -34,3 +34,4 @@ ssl/
 .claude_consciousness.m8
 .env.mine
 .roo/mcp.json
+tmp/

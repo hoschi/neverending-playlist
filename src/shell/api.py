@@ -1,3 +1,8 @@
+"""FastAPI API for Neverending Playlist application.
+
+This module contains all API endpoints and the FastAPI application configuration.
+"""
+
 import ssl
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -11,7 +16,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from loguru import logger
 from pydantic import SecretStr
 from returns.pipeline import is_successful
-from spotipy.oauth2 import SpotifyOAuth  # type: ignore
+from spotipy.oauth2 import SpotifyOAuth  # type: ignore  # noqa: F401
 
 from src.core.config import get_settings
 from src.core.models import (
@@ -26,6 +31,7 @@ from src.core.services.playlist_service import (
 )
 from src.shell.clients import ConcreteSpotifyClient, ConcreteSupabaseClient
 from src.shell.logging_config import setup_logging
+from src.shell.watch_service import watch_service
 
 
 def get_supabase_client() -> SupabaseClient:
@@ -57,9 +63,18 @@ def get_encryption_service() -> EncryptionService:
 
 @asynccontextmanager
 async def lifespan(_: object) -> AsyncGenerator[None, None]:  # pragma: no cover
+    """FastAPI application lifespan management.
+
+    Manages the startup and shutdown lifecycle of the application.
+    """
     setup_logging()
     logger.info("FastAPI application starting up...")
+
     yield
+
+    # Shutdown lifecycle
+    logger.info("FastAPI application shutting down...")
+    logger.info("FastAPI application shutdown complete")
 
 
 app: FastAPI = FastAPI(lifespan=lifespan)
@@ -240,6 +255,164 @@ async def clear_played_endpoint(
             "filled_count": filled_count,
         },
     )
+
+
+@app.get("/clear-played-watchmode")
+async def clear_played_watchmode_endpoint(
+    supabase_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
+    spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
+) -> JSONResponse:
+    """API endpoint to activate watchmode for automatic playlist clearing."""
+    try:
+        # Check for active playback first
+        try:
+            playback_result = await spotify_client.get_current_playback()
+
+            if not is_successful(playback_result):
+                logger.warning("Failed to check playback status")
+                return JSONResponse(
+                    status_code=409,
+                    content={
+                        "status": "playback_check_failed",
+                        "message": "Failed to check playback status",
+                    },
+                )
+
+            current_playback = playback_result.unwrap()
+            if current_playback is None:
+                logger.warning("No active playback detected")
+                return JSONResponse(
+                    status_code=409,
+                    content={
+                        "status": "no_active_playback",
+                        "message": "No active playback detected. Watchmode can only be activated when Spotify is playing.",
+                    },
+                )
+
+        except Exception as e:
+            logger.error(f"Error checking playback: {e}")
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "playback_check_error",
+                    "message": "Error checking playback status",
+                    "details": str(e),
+                },
+            )
+
+        # Get WatchService instance and start background monitoring
+        try:
+            watch_service_instance = watch_service(
+                spotify_client=spotify_client,
+                supabase_client=supabase_client,
+            )
+
+            current_state = await watch_service_instance.get_state()
+
+            # Check if already running
+            if current_state.is_running:
+                logger.info("WatchService already active")
+                # Check state consistency: if Checker is running, next_check must be set
+                if current_state.next_check is None:
+                    raise HTTPException(
+                        status_code=500,
+                        detail={
+                            "error": "internal_state_inconsistent",
+                            "message": "Internal state error: next_check is None while monitoring is active",
+                        },
+                    )
+
+                next_check_value = current_state.next_check
+
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "status": "already_running",
+                        "message": "Background monitoring is already active",
+                        "monitoring": {
+                            "next_check": next_check_value.isoformat() + "Z",
+                            "retries_left": current_state.retries_left,
+                        },
+                    },
+                )
+
+            # Start background monitoring
+            try:
+                new_state = await watch_service_instance.start_watch_service()
+
+                logger.info("Background monitoring started successfully")
+
+                # Check state consistency: if Checker is running, next_check must be set
+                if new_state.next_check is None:
+                    raise HTTPException(
+                        status_code=500,
+                        detail={
+                            "error": "internal_state_inconsistent",
+                            "message": "Internal state error: next_check is None while monitoring is active",
+                        },
+                    )
+
+                next_check_value = new_state.next_check
+
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "status": "monitoring_started",
+                        "message": "Background monitoring has been started",
+                        "monitoring": {
+                            "next_check": next_check_value.isoformat() + "Z",
+                            "retries_left": new_state.retries_left,
+                        },
+                    },
+                )
+
+            except Exception as e:
+                logger.error(f"Error starting watch service: {e}")
+
+                # Handle specific error cases
+                if (
+                    "no_active_playback" in str(e).lower()
+                    or "no active playback" in str(e).lower()
+                ):
+                    return JSONResponse(
+                        status_code=409,
+                        content={
+                            "status": "playback_inactive",
+                            "message": "No active playback detected. Watchmode can only be started when Spotify is playing.",
+                            "details": str(e),
+                        },
+                    )
+                else:
+                    return JSONResponse(
+                        status_code=500,
+                        content={
+                            "status": "startup_error",
+                            "message": "Error starting background monitoring",
+                            "details": str(e),
+                        },
+                    )
+
+        except Exception as e:
+            logger.error(f"Error accessing watch service: {e}")
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "service_error",
+                    "message": "Error accessing watch service",
+                    "details": str(e),
+                },
+            )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in watchmode endpoint: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "unexpected_error",
+                "message": "An unexpected error occurred",
+                "details": str(e),
+            },
+        )
 
 
 def main() -> None:  # pragma: no cover

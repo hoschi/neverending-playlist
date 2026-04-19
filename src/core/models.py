@@ -78,7 +78,7 @@ class UserAuthorization(BaseModel):
 
 
 class PlaylistClearFailure(str, Enum):
-    """Fehlertypen für Playlist-Clear-Operationen"""
+    """Error types for Playlist-Clear operations"""
 
     PLAYBACK_INACTIVE = "PLAYBACK_INACTIVE"
     WRONG_PLAYLIST = "WRONG_PLAYLIST"
@@ -86,7 +86,7 @@ class PlaylistClearFailure(str, Enum):
 
 
 class PlaylistClearError(BaseModel):
-    """Detaillierte Fehlerinformationen für Playlist-Clear-Operationen."""
+    """Detailed error information for Playlist-Clear operations."""
 
     error_code: PlaylistClearFailure = Field(
         ...,
@@ -94,7 +94,7 @@ class PlaylistClearError(BaseModel):
     )
     message: str = Field(
         ...,
-        description="Eine benutzerfreundliche Fehlermeldung.",
+        description="A user-friendly error message.",
     )
     details: str | None = Field(
         default=None,

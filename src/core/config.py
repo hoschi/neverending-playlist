@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # Playlist Autofill (optional)
     playlist_autofill_count: int | None = None
 
+    # Watch Service (optional)
+    watch_service_timeout_minutes: int = 10
+
     # Encryption
     encryption_key: str
 

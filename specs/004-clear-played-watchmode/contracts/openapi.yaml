@@ -1,0 +1,59 @@
+openapi: 3.0.0
+info:
+  title: Neverending Playlist API Extension
+  version: 1.0.0
+paths:
+  /clear-played-watchmode:
+    get:
+      summary: Activate or get the status of the played tracks checker
+      description: |
+        Installs a background "checker" that periodically clears played tracks.
+        - If no checker is running and playback is active, it starts the checker.
+        - If a checker is already running, it returns the current status.
+        - If no playback is detected on the initial call, it returns an error.
+      responses:
+        '200':
+          description: Success. Checker is either installed or its status is returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: The current status of the checker.
+                    enum: [checker_installed, checker_running]
+                  state:
+                    $ref: '#/components/schemas/CheckerState'
+        '400':
+          description: Bad Request. No active playback was detected when trying to start the checker.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: "No active playback detected. Checker not started."
+components:
+  schemas:
+    CheckerState:
+      type: object
+      properties:
+        is_running:
+          type: boolean
+          description: True if the checker's background task is currently scheduled.
+        retries_left:
+          type: integer
+          description: The number of remaining attempts before the checker stops.
+        last_playback_detected:
+          type: boolean
+          description: True if the last check found an active playback session.
+        last_checked:
+          type: string
+          format: date-time
+          description: The timestamp of the last check.
+        next_check:
+          type: string
+          format: date-time
+          description: The timestamp of the next scheduled check.
