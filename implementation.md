@@ -53,8 +53,8 @@ flowchart LR
 - Implementiert in `src/shell/neverending_songs.py`.
 - Ablauf:
   - SQLite-Dateigröße prüfen (`SQLITE_MAX_SIZE_BYTES`).
-  - Für jede URL in `SONG_SOURCE_REST_URLS` Daten laden.
-  - Falls URL keine `start`/`end` Parameter enthält, automatisch 20-Minuten-Fenster anhängen.
+  - Für jede vollständig konfigurierte URL in `SONG_SOURCE_REST_URLS` Daten laden.
+  - Zeitfenster (`start`/`end`) wird durch den User in der URL gesetzt, nicht durch das System ergänzt.
   - jq-Mapping anwenden und Records validieren.
   - Daten per `INSERT OR IGNORE` in `song_requests` schreiben.
   - Laufhistorie in `neverending_songs_runs` persistieren.

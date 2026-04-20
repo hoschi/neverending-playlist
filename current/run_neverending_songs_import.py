@@ -15,7 +15,6 @@ def main() -> int:
         source_urls=settings.song_source_rest_urls,
         sqlite_db_path=settings.sqlite_db_path,
         sqlite_max_size_bytes=settings.sqlite_max_size_bytes,
-        window_minutes=20,
     )
 
     if not is_successful(result):

@@ -1,6 +1,6 @@
 # Current State
 
-**Zuletzt aktualisiert:** 19. April 2026, 15:20 UTC
+**Zuletzt aktualisiert:** 20. April 2026, 06:10 UTC
 
 ## Repository Overview
 
@@ -30,7 +30,7 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 
 - **`__init__.py`** - Macht das `services`-Verzeichnis zu einem Python-Package.
 - **`encryption_service.py`** - Ein Pydantic-basiertes Service-Modell, das symmetrische Verschlüsselung mit `cryptography.Fernet` für das sichere Speichern von Tokens implementiert.
-- **`neverending_songs_service.py`** - Enthält pure Hilfsfunktionen für den NeverendingSongs-Import: UTC-Zeitfenster berechnen, `start`/`end` Query-Parameter an Source-URLs anhängen/ersetzen und `source` aus URL-Domain ableiten.
+- **`neverending_songs_service.py`** - Enthält die pure Hilfsfunktion für den NeverendingSongs-Import, um `source` aus der URL-Domain abzuleiten.
 - **`playlist_service.py`** - Enthält die Business-Logik `sync_playlist` (gibt SyncResult zurück), `add_songs_to_spotify`, um Songs von Supabase zu holen und zu Spotify hinzuzufügen. `clear_played_tracks_from_playlist` für das Entfernen von abgespielten Tracks. Autofill-Logik mit `_autofill_playlist()` für automatische Playlist-Auffüllung bis zur Mindestanzahl erreicht ist. Mehrfache Nachfüllversuche bei nicht gefundenen Liedern, **Error_count > 0 führt zu Fehlschlag**.
 
 ### Shell-Module (Imperative Schale)
@@ -41,7 +41,7 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 - **`api.py`** - FastAPI Web-Interface. Stellt die Endpunkte `/login` und `/callback` für den OAuth-Flow sowie **`/sync-playlist`** (gibt 207 bei partial failure, sonst strukturierte Erfolge) für die Playlist-Synchronisation, **`/clear-played`** für das Entfernen von abgespielten Tracks und **`GET /clear-played-watchmode`** für die Aktivierung/Status-Abfrage des Watchmode-Features bereit. **`Korrektur`** des `/clear-played-watchmode` Endpunkts: Entfernte manuelle `next_check` Berechnung und verwendet jetzt direkt die Werte aus `CheckerState` für konsistente State-Verwaltung. `/clear-played` nutzt auch SupabaseClient für Autofill-Funktionalität.
 - **`clients.py`** - Enthält die konkreten Implementierungen `ConcreteSupabaseClient` und `ConcreteSpotifyClient`, die die in `core/protocols.py` definierten Protokolle erfüllen. `ConcreteSpotifyClient` um die neuen Methoden für Playback-Check und Track-Entfernung.
 - **`logging_config.py`** - Konfiguriert `Loguru` für strukturiertes Logging basierend auf den Einstellungen in `config.py`.
-- **`neverending_songs.py`** - Implementiert den NeverendingSongs-Ingest in der Shell: REST-Download, jq-Mapping, SQLite-Größen-Guard, persistente Speicherung in `song_requests` und Laufhistorie in `neverending_songs_runs` als `Result`-basierter Importlauf.
+- **`neverending_songs.py`** - Implementiert den NeverendingSongs-Ingest in der Shell: REST-Download über vollständig konfigurierte Source-URLs (ohne automatische `start`/`end`-Ergänzung), jq-Mapping, SQLite-Größen-Guard, persistente Speicherung in `song_requests` und Laufhistorie in `neverending_songs_runs` als `Result`-basierter Importlauf.
 - **`state.py`** - Singleton-basiertes In-Memory State Management für den Watchmode WatchService. Thread-Safe Implementation mit `asyncio.Lock` für globalen Zustand.
 - **`watch_service.py`** - Service-Klasse für das Watchmode-Feature. Implementiert die automatische Überwachung und Bereinigung von abgespielten Tracks mit konfigurierbaren Intervallen basierend auf `WATCH_SERVICE_TIMEOUT_MINUTES`. Verwendet `state.py` für State-Management. Startet Background-Tasks mit asyncio, prüft aktives Playback und führt automatisches Löschen durch. Retry-Counter wird nun korrekt zurückgesetzt, wenn Playback nach einem Stop wieder erkannt wird.
 - **`cli.py`** - Ein einfacher Typer-CLI-Einstiegspunkt, der die `main`-Funktion für die API startet.

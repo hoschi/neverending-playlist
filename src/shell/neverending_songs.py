@@ -4,7 +4,6 @@ import sqlite3
 import subprocess
 from datetime import UTC, datetime
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qsl, urlsplit
 from urllib.request import urlopen
 
 from loguru import logger
@@ -16,11 +15,7 @@ from src.core.models import (
     NeverendingSongsImportStatus,
     NeverendingSongsMappedRecord,
 )
-from src.core.services.neverending_songs_service import (
-    build_source_url_with_window,
-    build_utc_window_iso,
-    source_from_url,
-)
+from src.core.services.neverending_songs_service import source_from_url
 from src.core.sqlite_schema import (
     IMPORT_RUNS_TABLE,
     SONG_REQUESTS_TABLE,
@@ -37,7 +32,6 @@ def run_neverending_songs_import(
     source_urls: list[str],
     sqlite_db_path: str,
     sqlite_max_size_bytes: int,
-    window_minutes: int = 20,
 ) -> Result[NeverendingSongsImportRun, Exception]:
     """Imports songs from configured REST sources into SQLite."""
     if not source_urls:
@@ -55,20 +49,15 @@ def run_neverending_songs_import(
         )
 
     try:
-        start_iso, end_iso = build_utc_window_iso(
-            window_end=datetime.now(UTC),
-            window_minutes=window_minutes,
-        )
         mapped_records: list[NeverendingSongsMappedRecord] = []
 
         for source_url in source_urls:
             source_name = source_from_url(source_url)
-            resolved_url = _resolve_source_url(source_url, start_iso, end_iso)
-            payload = _fetch_payload(resolved_url)
+            payload = _fetch_payload(source_url)
             mapped_records.extend(_map_payload_with_jq(payload, source_name))
 
         imported_count = _write_records_to_sqlite(sqlite_db_path, mapped_records)
-        run_details = f"window_start={start_iso};window_end={end_iso}"
+        run_details = f"source_urls={len(source_urls)}"
         _write_import_run(
             sqlite_db_path=sqlite_db_path,
             status=NeverendingSongsImportStatus.SUCCESS,
@@ -129,15 +118,6 @@ def _guard_sqlite_file_size(
         )
 
     return Success(None)
-
-
-def _resolve_source_url(source_url: str, start_iso: str, end_iso: str) -> str:
-    query_params = {
-        key for key, _ in parse_qsl(urlsplit(source_url).query, keep_blank_values=True)
-    }
-    if "start" in query_params and "end" in query_params:
-        return source_url
-    return build_source_url_with_window(source_url, start_iso, end_iso)
 
 
 def _fetch_payload(url: str) -> str:
