@@ -44,7 +44,7 @@ flowchart LR
     A[Radio Bob REST API] --> B[JSON Payload]
     B --> C[jq Mapping]
     C --> D[(SQLite song_requests)]
-    D --> E[Playlist Sync Source SUPABASE|SQLITE]
+    D --> E[Playlist Sync Source SUPABASE/SQLITE]
     E --> F[Spotify Playlist]
 ```
 
