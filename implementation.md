@@ -115,3 +115,15 @@ flowchart TD
   - Scheduler-Importfehlern (`src/shell/neverending_scheduler.py`)
   - Scheduler-Crashs (`src/shell/neverending_scheduler.py`)
   - Unbehandelten Serverfehlern (`src/shell/api.py`, globaler Exception-Handler)
+
+## Dokumentationsabgleich (Phase 6)
+
+- `README.md` ist auf den aktuellen Stand gebracht:
+  - konfigurierbare Song-Request-Quelle (`SUPABASE`/`SQLITE`),
+  - integrierter NeverendingSongs-Import,
+  - Scheduler-Verhalten (02:00 + Catch-up),
+  - optionale macOS-Fehlerbenachrichtigungen.
+- `.env.example` beschreibt:
+  - vollständig konfigurierte `SONG_SOURCE_REST_URLS` (inkl. Zeitfenster in der URL),
+  - optionale Notification-Konfiguration via `ENABLE_MAC_NOTIFICATIONS`.
+- `implementation.md` dokumentiert Phasen 2 bis 6 konsistent zur Implementierung.
