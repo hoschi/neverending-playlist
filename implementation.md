@@ -74,6 +74,7 @@ flowchart TD
 
 - `current/run_neverending_songs_import.py`: Führt den Import mit aktuellen Settings aus.
 - `current/check_phase2_sqlite.py`: Zeigt Row-Counts und jeweils den letzten Import-/Song-Eintrag an.
+- `current/check_phase5_notifications.py`: Triggert eine Test-Benachrichtigung (nur bei aktiviertem `ENABLE_MAC_NOTIFICATIONS=true`).
 
 ## Playlist-Quelle (Phase 3)
 
@@ -102,3 +103,15 @@ flowchart TD
     E -- yes --> F[Run NeverendingSongs import]
     F --> G[Write run in neverending_songs_runs]
 ```
+
+## macOS-Fehlerbenachrichtigung (Phase 5)
+
+- Implementiert in `src/shell/mac_notifications.py`.
+- Aktivierung über `ENABLE_MAC_NOTIFICATIONS=true`.
+- Titel der Notification: `Neverending Playlist`.
+- Nachricht enthält UTC-Fehlerzeitpunkt.
+- Verwendet `osascript`; wenn nicht verfügbar, wird nur ein Warning geloggt.
+- Eingehängt bei:
+  - Scheduler-Importfehlern (`src/shell/neverending_scheduler.py`)
+  - Scheduler-Crashs (`src/shell/neverending_scheduler.py`)
+  - Unbehandelten Serverfehlern (`src/shell/api.py`, globaler Exception-Handler)

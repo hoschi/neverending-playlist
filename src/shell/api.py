@@ -11,7 +11,7 @@ from typing import Annotated
 import spotipy  # type: ignore
 import uvicorn
 from dotenv import set_key
-from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from loguru import logger
 from pydantic import SecretStr
@@ -35,6 +35,7 @@ from src.shell.clients import (
     ConcreteSupabaseClient,
 )
 from src.shell.logging_config import setup_logging
+from src.shell.mac_notifications import notify_error_if_enabled
 from src.shell.neverending_scheduler import NeverendingScheduler
 from src.shell.watch_service import watch_service
 
@@ -91,6 +92,18 @@ async def lifespan(_: object) -> AsyncGenerator[None, None]:  # pragma: no cover
 
 
 app: FastAPI = FastAPI(lifespan=lifespan)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:
+    """Handles unhandled server errors with optional local notifications."""
+    settings = get_settings()
+    notify_error_if_enabled(settings, f"Unhandled server error: {exc}")
+    logger.exception("Unhandled server error")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An internal error occurred."},
+    )
 
 
 @app.get("/login", status_code=307)

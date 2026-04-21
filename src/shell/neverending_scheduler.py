@@ -13,6 +13,7 @@ from src.core.services.neverending_scheduler_service import (
     should_run_daily_import,
 )
 from src.core.sqlite_schema import IMPORT_RUNS_TABLE, SQLITE_SCHEMA_STATEMENTS
+from src.shell.mac_notifications import notify_error_if_enabled
 from src.shell.neverending_songs import run_neverending_songs_import
 
 
@@ -78,9 +79,14 @@ class NeverendingScheduler:
         )
 
         if not is_successful(result):
+            error = result.failure()
             logger.error(
                 "Scheduled NeverendingSongs import failed: {error}",
-                error=result.failure(),
+                error=error,
+            )
+            notify_error_if_enabled(
+                self.settings,
+                f"Scheduled NeverendingSongs import failed: {error}",
             )
             return False
 
@@ -111,6 +117,10 @@ class NeverendingScheduler:
             logger.info("NeverendingScheduler task cancelled")
         except Exception as error:
             logger.error("NeverendingScheduler crashed: {error}", error=error)
+            notify_error_if_enabled(
+                self.settings,
+                f"NeverendingScheduler crashed: {error}",
+            )
         finally:
             logger.info("NeverendingScheduler loop exited")
 

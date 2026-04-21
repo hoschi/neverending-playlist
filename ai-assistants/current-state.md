@@ -1,6 +1,6 @@
 # Current State
 
-**Zuletzt aktualisiert:** 21. April 2026, 16:58 UTC
+**Zuletzt aktualisiert:** 21. April 2026, 19:07 UTC
 
 ## Repository Overview
 
@@ -39,9 +39,10 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 #### src/shell/
 
 - **`__init__.py`** - Leere Shell-Package Initialisierung.
-- **`api.py`** - FastAPI Web-Interface. Stellt die Endpunkte `/login` und `/callback` für den OAuth-Flow sowie **`/sync-playlist`** (gibt 207 bei partial failure, sonst strukturierte Erfolge) für die Playlist-Synchronisation, **`/clear-played`** für das Entfernen von abgespielten Tracks und **`GET /clear-played-watchmode`** für die Aktivierung/Status-Abfrage des Watchmode-Features bereit. **`Korrektur`** des `/clear-played-watchmode` Endpunkts: Entfernte manuelle `next_check` Berechnung und verwendet jetzt direkt die Werte aus `CheckerState` für konsistente State-Verwaltung. Die Dependency `get_supabase_client()` fungiert als Backend-Selector und liefert abhängig von `SONG_SOURCE` entweder `ConcreteSupabaseClient` oder `ConcreteSqliteClient`.
+- **`api.py`** - FastAPI Web-Interface. Stellt die Endpunkte `/login` und `/callback` für den OAuth-Flow sowie **`/sync-playlist`** (gibt 207 bei partial failure, sonst strukturierte Erfolge) für die Playlist-Synchronisation, **`/clear-played`** für das Entfernen von abgespielten Tracks und **`GET /clear-played-watchmode`** für die Aktivierung/Status-Abfrage des Watchmode-Features bereit. **`Korrektur`** des `/clear-played-watchmode` Endpunkts: Entfernte manuelle `next_check` Berechnung und verwendet jetzt direkt die Werte aus `CheckerState` für konsistente State-Verwaltung. Die Dependency `get_supabase_client()` fungiert als Backend-Selector und liefert abhängig von `SONG_SOURCE` entweder `ConcreteSupabaseClient` oder `ConcreteSqliteClient`. Zusätzlich meldet ein globaler Exception-Handler unbehandelte Serverfehler optional per macOS-Notification.
 - **`clients.py`** - Enthält die konkreten Implementierungen `ConcreteSupabaseClient`, `ConcreteSqliteClient` und `ConcreteSpotifyClient`. `ConcreteSqliteClient` bietet dieselbe Song-Request-Schnittstelle wie Supabase, damit Playlist-Sync/Autofill auf SQLite laufen können. `ConcreteSpotifyClient` enthält zusätzlich die Methoden für Playback-Check und Track-Entfernung.
 - **`logging_config.py`** - Konfiguriert `Loguru` für strukturiertes Logging basierend auf den Einstellungen in `config.py`.
+- **`mac_notifications.py`** - Optionale macOS-Fehlerbenachrichtigung via `osascript` (aktivierbar über `ENABLE_MAC_NOTIFICATIONS`). Benachrichtigungen enthalten UTC-Zeitstempel und degradieren bei fehlendem `osascript` auf Warning-Logs.
 - **`neverending_scheduler.py`** - Hourly Background-Scheduler mit täglichem 02:00-Run und stündlichem Catch-up-Check. Nutzt `neverending_songs_runs` (Status `SUCCESS`) als persistente Grundlage für reboot-sichere Nachholruns.
 - **`neverending_songs.py`** - Implementiert den NeverendingSongs-Ingest in der Shell: REST-Download über vollständig konfigurierte Source-URLs (ohne automatische `start`/`end`-Ergänzung), jq-Mapping, SQLite-Größen-Guard, persistente Speicherung in `song_requests` und Laufhistorie in `neverending_songs_runs` als `Result`-basierter Importlauf.
 - **`state.py`** - Singleton-basiertes In-Memory State Management für den Watchmode WatchService. Thread-Safe Implementation mit `asyncio.Lock` für globalen Zustand.
