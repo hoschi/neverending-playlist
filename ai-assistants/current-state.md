@@ -1,6 +1,6 @@
 # Current State
 
-**Zuletzt aktualisiert:** 20. April 2026, 06:10 UTC
+**Zuletzt aktualisiert:** 21. April 2026, 16:45 UTC
 
 ## Repository Overview
 
@@ -31,15 +31,15 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 - **`__init__.py`** - Macht das `services`-Verzeichnis zu einem Python-Package.
 - **`encryption_service.py`** - Ein Pydantic-basiertes Service-Modell, das symmetrische Verschlüsselung mit `cryptography.Fernet` für das sichere Speichern von Tokens implementiert.
 - **`neverending_songs_service.py`** - Enthält die pure Hilfsfunktion für den NeverendingSongs-Import, um `source` aus der URL-Domain abzuleiten.
-- **`playlist_service.py`** - Enthält die Business-Logik `sync_playlist` (gibt SyncResult zurück), `add_songs_to_spotify`, um Songs von Supabase zu holen und zu Spotify hinzuzufügen. `clear_played_tracks_from_playlist` für das Entfernen von abgespielten Tracks. Autofill-Logik mit `_autofill_playlist()` für automatische Playlist-Auffüllung bis zur Mindestanzahl erreicht ist. Mehrfache Nachfüllversuche bei nicht gefundenen Liedern, **Error_count > 0 führt zu Fehlschlag**.
+- **`playlist_service.py`** - Enthält die Business-Logik `sync_playlist` (gibt SyncResult zurück), `add_songs_to_spotify` und `clear_played_tracks_from_playlist`. Song-Requests werden aus dem konfigurierten Backend (Supabase oder SQLite) gelesen und nach Spotify-Status zurückgeschrieben. Autofill-Logik mit `_autofill_playlist()` für automatische Playlist-Auffüllung bis zur Mindestanzahl erreicht ist. Mehrfache Nachfüllversuche bei nicht gefundenen Liedern, **Error_count > 0 führt zu Fehlschlag**.
 
 ### Shell-Module (Imperative Schale)
 
 #### src/shell/
 
 - **`__init__.py`** - Leere Shell-Package Initialisierung.
-- **`api.py`** - FastAPI Web-Interface. Stellt die Endpunkte `/login` und `/callback` für den OAuth-Flow sowie **`/sync-playlist`** (gibt 207 bei partial failure, sonst strukturierte Erfolge) für die Playlist-Synchronisation, **`/clear-played`** für das Entfernen von abgespielten Tracks und **`GET /clear-played-watchmode`** für die Aktivierung/Status-Abfrage des Watchmode-Features bereit. **`Korrektur`** des `/clear-played-watchmode` Endpunkts: Entfernte manuelle `next_check` Berechnung und verwendet jetzt direkt die Werte aus `CheckerState` für konsistente State-Verwaltung. `/clear-played` nutzt auch SupabaseClient für Autofill-Funktionalität.
-- **`clients.py`** - Enthält die konkreten Implementierungen `ConcreteSupabaseClient` und `ConcreteSpotifyClient`, die die in `core/protocols.py` definierten Protokolle erfüllen. `ConcreteSpotifyClient` um die neuen Methoden für Playback-Check und Track-Entfernung.
+- **`api.py`** - FastAPI Web-Interface. Stellt die Endpunkte `/login` und `/callback` für den OAuth-Flow sowie **`/sync-playlist`** (gibt 207 bei partial failure, sonst strukturierte Erfolge) für die Playlist-Synchronisation, **`/clear-played`** für das Entfernen von abgespielten Tracks und **`GET /clear-played-watchmode`** für die Aktivierung/Status-Abfrage des Watchmode-Features bereit. **`Korrektur`** des `/clear-played-watchmode` Endpunkts: Entfernte manuelle `next_check` Berechnung und verwendet jetzt direkt die Werte aus `CheckerState` für konsistente State-Verwaltung. Die Dependency `get_supabase_client()` fungiert als Backend-Selector und liefert abhängig von `SONG_SOURCE` entweder `ConcreteSupabaseClient` oder `ConcreteSqliteClient`.
+- **`clients.py`** - Enthält die konkreten Implementierungen `ConcreteSupabaseClient`, `ConcreteSqliteClient` und `ConcreteSpotifyClient`. `ConcreteSqliteClient` bietet dieselbe Song-Request-Schnittstelle wie Supabase, damit Playlist-Sync/Autofill auf SQLite laufen können. `ConcreteSpotifyClient` enthält zusätzlich die Methoden für Playback-Check und Track-Entfernung.
 - **`logging_config.py`** - Konfiguriert `Loguru` für strukturiertes Logging basierend auf den Einstellungen in `config.py`.
 - **`neverending_songs.py`** - Implementiert den NeverendingSongs-Ingest in der Shell: REST-Download über vollständig konfigurierte Source-URLs (ohne automatische `start`/`end`-Ergänzung), jq-Mapping, SQLite-Größen-Guard, persistente Speicherung in `song_requests` und Laufhistorie in `neverending_songs_runs` als `Result`-basierter Importlauf.
 - **`state.py`** - Singleton-basiertes In-Memory State Management für den Watchmode WatchService. Thread-Safe Implementation mit `asyncio.Lock` für globalen Zustand.

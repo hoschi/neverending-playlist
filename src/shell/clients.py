@@ -1,3 +1,5 @@
+import sqlite3
+
 import spotipy  # type: ignore
 from loguru import logger
 from pydantic import SecretStr
@@ -9,6 +11,7 @@ from src.core.config import get_settings
 from src.core.models import Song, SongAdditionStatus, SongRequest
 from src.core.protocols import SpotifyClient, SupabaseClient
 from src.core.services.encryption_service import EncryptionService
+from src.core.sqlite_schema import SONG_REQUESTS_TABLE, SQLITE_SCHEMA_STATEMENTS
 
 
 class ConcreteSupabaseClient(SupabaseClient):
@@ -54,9 +57,7 @@ class ConcreteSupabaseClient(SupabaseClient):
             ids = [sr.id for sr in song_requests]
             statuses = [sr.status.value if sr.status else None for sr in song_requests]
             logger.debug(f"Updating song requests: IDs {ids}, statuses {statuses}")
-            # Update each song request individually with its specific status
             for song_request in song_requests:
-                # Update the database with the status
                 (
                     self.client.table(self.table_name)
                     .update(
@@ -70,6 +71,84 @@ class ConcreteSupabaseClient(SupabaseClient):
                     .execute()
                 )
             return Success(None)
+        except Exception as e:
+            return Result.from_failure(e)
+
+
+class ConcreteSqliteClient(SupabaseClient):
+    """A SQLite-backed implementation for song request operations."""
+
+    def __init__(self) -> None:
+        settings = get_settings()
+        self.sqlite_db_path = settings.sqlite_db_path
+
+    def _get_connection(self) -> sqlite3.Connection:
+        connection = sqlite3.connect(self.sqlite_db_path)
+        connection.row_factory = sqlite3.Row
+        cursor = connection.cursor()
+        for statement in SQLITE_SCHEMA_STATEMENTS:
+            cursor.execute(statement)
+        connection.commit()
+        return connection
+
+    async def fetch_pending_song_requests(
+        self, max_count: int
+    ) -> Result[list[SongRequest], Exception]:
+        try:
+            logger.debug(
+                f"Fetching pending song requests from SQLite with max_count: {max_count}"
+            )
+            connection = self._get_connection()
+            try:
+                cursor = connection.cursor()
+                rows = cursor.execute(
+                    f"""
+                    SELECT id, artist, song, status
+                    FROM {SONG_REQUESTS_TABLE}
+                    WHERE status IS NULL
+                    ORDER BY id ASC
+                    LIMIT ?
+                    """,
+                    (max_count,),
+                ).fetchall()
+
+                song_requests = [
+                    SongRequest(
+                        id=int(row["id"]),
+                        song=Song(artist=str(row["artist"]), title=str(row["song"])),
+                        status=None,
+                    )
+                    for row in rows
+                ]
+                return Success(song_requests)
+            finally:
+                connection.close()
+        except Exception as e:
+            return Result.from_failure(e)
+
+    async def update_song_requests_as_added(
+        self, song_requests: list[SongRequest]
+    ) -> Result[None, Exception]:
+        try:
+            connection = self._get_connection()
+            try:
+                cursor = connection.cursor()
+                for song_request in song_requests:
+                    cursor.execute(
+                        f"""
+                        UPDATE {SONG_REQUESTS_TABLE}
+                        SET status = ?
+                        WHERE id = ?
+                        """,
+                        (
+                            song_request.status.value if song_request.status else None,
+                            song_request.id,
+                        ),
+                    )
+                connection.commit()
+                return Success(None)
+            finally:
+                connection.close()
         except Exception as e:
             return Result.from_failure(e)
 

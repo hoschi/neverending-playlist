@@ -29,13 +29,20 @@ from src.core.services.playlist_service import (
     clear_played_tracks_from_playlist,
     sync_playlist,
 )
-from src.shell.clients import ConcreteSpotifyClient, ConcreteSupabaseClient
+from src.shell.clients import (
+    ConcreteSpotifyClient,
+    ConcreteSqliteClient,
+    ConcreteSupabaseClient,
+)
 from src.shell.logging_config import setup_logging
 from src.shell.watch_service import watch_service
 
 
 def get_supabase_client() -> SupabaseClient:
-    """FastAPI dependency provider for the Supabase client."""
+    """FastAPI dependency provider for the configured song request backend."""
+    settings = get_settings()
+    if settings.song_source == "SQLITE":
+        return ConcreteSqliteClient()
     return ConcreteSupabaseClient()
 
 
@@ -140,12 +147,12 @@ def callback(
 
 @app.post("/sync-playlist")
 async def sync_playlist_endpoint(
-    supabase_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
+    song_request_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
     max_count: int = Query(10, gt=0, le=50),
 ) -> Response:
     """API endpoint to synchronize the playlist."""
-    result = await sync_playlist(supabase_client, spotify_client, max_count)
+    result = await sync_playlist(song_request_client, spotify_client, max_count)
 
     if not is_successful(result):
         raise HTTPException(status_code=500, detail=str(result.failure()))
@@ -178,7 +185,7 @@ async def sync_playlist_endpoint(
 
 @app.post("/clear-played")
 async def clear_played_endpoint(
-    supabase_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
+    song_request_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
 ) -> Response:
     """API endpoint to clear played tracks from the configured playlist."""
@@ -187,7 +194,7 @@ async def clear_played_endpoint(
     try:
         result = await clear_played_tracks_from_playlist(
             spotify_client,
-            supabase_client,
+            song_request_client,
             settings.spotify_playlist_id,
             settings.playlist_autofill_count,
         )
@@ -244,7 +251,7 @@ async def clear_played_endpoint(
             content={
                 "deleted_count": deleted_count,
                 "filled_count": filled_count,
-                "message": "Partial success: Not enough songs available in Supabase to autofill the playlist",
+                "message": "Partial success: Not enough songs available in the selected backend to autofill the playlist",
             },
         )
 
@@ -259,7 +266,7 @@ async def clear_played_endpoint(
 
 @app.get("/clear-played-watchmode")
 async def clear_played_watchmode_endpoint(
-    supabase_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
+    song_request_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
 ) -> JSONResponse:
     """API endpoint to activate watchmode for automatic playlist clearing."""
@@ -304,7 +311,7 @@ async def clear_played_watchmode_endpoint(
         try:
             watch_service_instance = watch_service(
                 spotify_client=spotify_client,
-                supabase_client=supabase_client,
+                supabase_client=song_request_client,
             )
 
             current_state = await watch_service_instance.get_state()

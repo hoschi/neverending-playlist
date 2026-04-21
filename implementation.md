@@ -74,3 +74,9 @@ flowchart TD
 
 - `current/run_neverending_songs_import.py`: Führt den Import mit aktuellen Settings aus.
 - `current/check_phase2_sqlite.py`: Zeigt Row-Counts und jeweils den letzten Import-/Song-Eintrag an.
+
+## Playlist-Quelle (Phase 3)
+
+- `SONG_SOURCE` steuert den Backend-Adapter für Song-Requests (`SUPABASE` oder `SQLITE`).
+- Die FastAPI-Dependency `get_supabase_client()` wählt dynamisch zwischen `ConcreteSupabaseClient` und `ConcreteSqliteClient`.
+- `/sync-playlist`, `/clear-played` und der Watchmode nutzen damit dieselbe konfigurierbare Song-Request-Quelle.
