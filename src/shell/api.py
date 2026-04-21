@@ -35,6 +35,7 @@ from src.shell.clients import (
     ConcreteSupabaseClient,
 )
 from src.shell.logging_config import setup_logging
+from src.shell.neverending_scheduler import NeverendingScheduler
 from src.shell.watch_service import watch_service
 
 
@@ -77,9 +78,14 @@ async def lifespan(_: object) -> AsyncGenerator[None, None]:  # pragma: no cover
     setup_logging()
     logger.info("FastAPI application starting up...")
 
+    settings = get_settings()
+    scheduler = NeverendingScheduler(settings)
+    await scheduler.start()
+
     yield
 
     # Shutdown lifecycle
+    await scheduler.stop()
     logger.info("FastAPI application shutting down...")
     logger.info("FastAPI application shutdown complete")
 

@@ -80,3 +80,25 @@ flowchart TD
 - `SONG_SOURCE` steuert den Backend-Adapter für Song-Requests (`SUPABASE` oder `SQLITE`).
 - Die FastAPI-Dependency `get_supabase_client()` wählt dynamisch zwischen `ConcreteSupabaseClient` und `ConcreteSqliteClient`.
 - `/sync-playlist`, `/clear-played` und der Watchmode nutzen damit dieselbe konfigurierbare Song-Request-Quelle.
+
+## Scheduler (Phase 4)
+
+- Implementiert in `src/shell/neverending_scheduler.py`, gestartet/gestoppt im FastAPI-Lifespan (`src/shell/api.py`).
+- Logik:
+  - Stündlicher Check (zur vollen Stunde).
+  - Tageslauf darf ab 02:00 Lokalzeit ausgeführt werden.
+  - Catch-up: Wenn letzter erfolgreicher Lauf nicht vom heutigen Tag ist, wird beim nächsten stündlichen Check importiert.
+- Persistenz:
+  - Letzter erfolgreicher Lauf wird aus `neverending_songs_runs` (Status `SUCCESS`) gelesen.
+  - Dadurch ist Catch-up reboot-sicher.
+
+```mermaid
+flowchart TD
+    A[Hourly tick] --> B{Local hour >= 2?}
+    B -- no --> C[Skip]
+    B -- yes --> D[Read last SUCCESS run]
+    D --> E{Run date < today?}
+    E -- no --> C
+    E -- yes --> F[Run NeverendingSongs import]
+    F --> G[Write run in neverending_songs_runs]
+```
