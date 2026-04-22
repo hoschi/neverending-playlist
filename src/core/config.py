@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import ClassVar, Literal
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,9 +12,9 @@ class Settings(BaseSettings):
     log_to_file: bool = False
 
     # Supabase
-    supabase_url: str
-    supabase_key: str
-    supabase_table: str
+    supabase_url: str | None = None
+    supabase_key: str | None = None
+    supabase_table: str | None = None
 
     # Song source backend
     song_source: Literal["SUPABASE", "SQLITE"] = "SQLITE"
@@ -62,6 +62,27 @@ class Settings(BaseSettings):
         if size_gb <= 0:
             raise ValueError("SQLITE_MAX_SIZE_BYTES must be greater than 0 GB")
         return size_gb * 1024 * 1024 * 1024
+
+    @model_validator(mode="after")
+    def _validate_song_source_requirements(self) -> "Settings":
+        """Ensures source-specific settings are present."""
+        if self.song_source == "SUPABASE":
+            missing_fields = [
+                field_name
+                for field_name, value in (
+                    ("SUPABASE_URL", self.supabase_url),
+                    ("SUPABASE_KEY", self.supabase_key),
+                    ("SUPABASE_TABLE", self.supabase_table),
+                )
+                if not value
+            ]
+            if missing_fields:
+                missing = ", ".join(missing_fields)
+                raise ValueError(
+                    f"Missing required settings for SUPABASE source: {missing}"
+                )
+
+        return self
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env",

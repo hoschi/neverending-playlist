@@ -19,6 +19,15 @@ class ConcreteSupabaseClient(SupabaseClient):
 
     def __init__(self) -> None:
         settings = get_settings()
+        if (
+            settings.supabase_url is None
+            or settings.supabase_key is None
+            or settings.supabase_table is None
+        ):
+            raise ValueError(
+                "SUPABASE_URL, SUPABASE_KEY and SUPABASE_TABLE are required "
+                "when SONG_SOURCE=SUPABASE"
+            )
         self.client: Client = create_client(
             settings.supabase_url, settings.supabase_key
         )
