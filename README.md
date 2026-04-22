@@ -244,7 +244,8 @@ nbstripout --install
 4. Configure `SONG_SOURCE_REST_URLS` with fully configured import URLs (including desired `start`/`end` range in each URL).
 5. **Optional**: Configure playlist autofill with `PLAYLIST_AUTOFILL_COUNT=25` to maintain a minimum track count.
 6. **Optional**: Configure watch service timeout with `WATCH_SERVICE_TIMEOUT_MINUTES=15` (default: 10).
-7. **Optional**: Enable local macOS notifications via `ENABLE_MAC_NOTIFICATIONS=true`.
+7. **Optional**: Enable startup debug import via `DEBUG_SYNC_AT_STARTUP=true`.
+8. **Optional**: Enable local macOS notifications via `ENABLE_MAC_NOTIFICATIONS=true`.
 
 ### 4. NeverendingSongs Import and Scheduler
 
@@ -260,15 +261,7 @@ nbstripout --install
 - Hourly checks at full hour boundaries.
 - Daily run is eligible from 02:00 local time onward.
 - If no successful run exists for today, a catch-up import is triggered.
-
-**Local checks:**
-
-```bash
-PYTHONPATH=. python current/run_neverending_songs_import.py
-PYTHONPATH=. python current/check_phase2_sqlite.py
-PYTHONPATH=. python current/check_phase4_scheduler_logic.py
-PYTHONPATH=. python current/check_phase5_notifications.py
-```
+- If `DEBUG_SYNC_AT_STARTUP=true`, one immediate startup import is triggered before the hourly scheduler loop starts.
 
 ### 5. Linking your Spotify Account
 

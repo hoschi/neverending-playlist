@@ -1,6 +1,6 @@
 # Current State
 
-**Zuletzt aktualisiert:** 21. April 2026, 19:07 UTC
+**Zuletzt aktualisiert:** 22. April 2026, 06:19 UTC
 
 ## Repository Overview
 
@@ -21,7 +21,7 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 #### src/core/
 
 - **`__init__.py`** - Leere Core-Package Initialisierung.
-- **`config.py`** - Pydantic Settings für Supabase/Spotify sowie NeverendingSongs-Basiskonfiguration: umschaltbare Song-Quelle (`SUPABASE|SQLITE`), SQLite-Pfad im Repo-Root und Maximalgröße, sowie verpflichtende Liste von REST-URLs für mehrere Quellen (`song_source_rest_urls`). Der `source` wird aus der URL-Domain abgeleitet. Optionaler macOS-Notification-Flag bleibt enthalten.
+- **`config.py`** - Pydantic Settings für Supabase/Spotify sowie NeverendingSongs-Basiskonfiguration: umschaltbare Song-Quelle (`SUPABASE|SQLITE`), SQLite-Pfad im Repo-Root und Maximalgröße, verpflichtende Liste von REST-URLs für mehrere Quellen (`song_source_rest_urls`) sowie optionales Startup-Debug-Flag (`DEBUG_SYNC_AT_STARTUP`) für einen sofortigen Importlauf beim App-Start. Der `source` wird aus der URL-Domain abgeleitet. Optionaler macOS-Notification-Flag bleibt enthalten.
 - **`models.py`** - Pydantic Datenmodelle und Enums für Playlist-Sync sowie NeverendingSongs-Basisdomäne: zusätzliche Backends/Import-Status-Enums, Source-Konfiguration, gemappte Import-Datensätze und Import-Run-Summary. Enthält weiterhin `Song`, `SongRequest`, `SyncResult`/`SyncFailure` und Playlist-Clear Modelle.
 - **`sqlite_schema.py`** - Definiert das feste SQLite-Schema als gemeinsame Schnittstelle für Import und Playlist-Sync: `song_requests` (inkl. `airtime`/`source`) und `neverending_songs_runs` für Laufhistorie, jeweils als zentrale SQL-Statements.
 - **`protocols.py`** - Definiert die `SupabaseClient` und `SpotifyClient` Protokolle mit `@runtime_checkable`, um die Entkopplung zwischen Shell und Core zu gewährleisten. `SpotifyClient` um `get_current_playback`, `get_playlist_items`, `remove_items_from_playlist`.
@@ -43,7 +43,7 @@ Dies ist ein **funktionales Python-Projekt**, das einen Webservice zur Synchroni
 - **`clients.py`** - Enthält die konkreten Implementierungen `ConcreteSupabaseClient`, `ConcreteSqliteClient` und `ConcreteSpotifyClient`. `ConcreteSqliteClient` bietet dieselbe Song-Request-Schnittstelle wie Supabase, damit Playlist-Sync/Autofill auf SQLite laufen können. `ConcreteSpotifyClient` enthält zusätzlich die Methoden für Playback-Check und Track-Entfernung.
 - **`logging_config.py`** - Konfiguriert `Loguru` für strukturiertes Logging basierend auf den Einstellungen in `config.py`.
 - **`mac_notifications.py`** - Optionale macOS-Fehlerbenachrichtigung via `osascript` (aktivierbar über `ENABLE_MAC_NOTIFICATIONS`). Benachrichtigungen enthalten UTC-Zeitstempel und degradieren bei fehlendem `osascript` auf Warning-Logs.
-- **`neverending_scheduler.py`** - Hourly Background-Scheduler mit täglichem 02:00-Run und stündlichem Catch-up-Check. Nutzt `neverending_songs_runs` (Status `SUCCESS`) als persistente Grundlage für reboot-sichere Nachholruns.
+- **`neverending_scheduler.py`** - Hourly Background-Scheduler mit täglichem 02:00-Run und stündlichem Catch-up-Check. Nutzt `neverending_songs_runs` (Status `SUCCESS`) als persistente Grundlage für reboot-sichere Nachholruns. Optionaler Startup-Debug-Override (`DEBUG_SYNC_AT_STARTUP`) löst beim App-Start einmalig sofort einen Importlauf aus.
 - **`neverending_songs.py`** - Implementiert den NeverendingSongs-Ingest in der Shell: REST-Download über vollständig konfigurierte Source-URLs (ohne automatische `start`/`end`-Ergänzung), jq-Mapping, SQLite-Größen-Guard, persistente Speicherung in `song_requests` und Laufhistorie in `neverending_songs_runs` als `Result`-basierter Importlauf.
 - **`state.py`** - Singleton-basiertes In-Memory State Management für den Watchmode WatchService. Thread-Safe Implementation mit `asyncio.Lock` für globalen Zustand.
 - **`watch_service.py`** - Service-Klasse für das Watchmode-Feature. Implementiert die automatische Überwachung und Bereinigung von abgespielten Tracks mit konfigurierbaren Intervallen basierend auf `WATCH_SERVICE_TIMEOUT_MINUTES`. Verwendet `state.py` für State-Management. Startet Background-Tasks mit asyncio, prüft aktives Playback und führt automatisches Löschen durch. Retry-Counter wird nun korrekt zurückgesetzt, wenn Playback nach einem Stop wieder erkannt wird.

@@ -89,6 +89,7 @@ flowchart TD
   - Stündlicher Check (zur vollen Stunde).
   - Tageslauf darf ab 02:00 Lokalzeit ausgeführt werden.
   - Catch-up: Wenn letzter erfolgreicher Lauf nicht vom heutigen Tag ist, wird beim nächsten stündlichen Check importiert.
+  - Debug-Override: Bei `DEBUG_SYNC_AT_STARTUP=true` wird beim App-Start einmalig sofort ein Importlauf ausgelöst.
 - Persistenz:
   - Letzter erfolgreicher Lauf wird aus `neverending_songs_runs` (Status `SUCCESS`) gelesen.
   - Dadurch ist Catch-up reboot-sicher.

@@ -33,6 +33,12 @@ class NeverendingScheduler:
         if self._shutdown_event.is_set():
             self._shutdown_event.clear()
 
+        if self.settings.debug_sync_at_startup:
+            logger.info(
+                "DEBUG_SYNC_AT_STARTUP enabled: triggering startup import check"
+            )
+            await self._run_import_now(trigger="startup_debug")
+
         self._task = asyncio.create_task(self._run_loop())
         logger.info("NeverendingScheduler started")
 
@@ -68,9 +74,14 @@ class NeverendingScheduler:
             )
             return False
 
+        return await self._run_import_now(trigger="scheduled")
+
+    async def _run_import_now(self, trigger: str) -> bool:
+        """Executes an import run immediately and returns whether execution succeeded."""
+
         logger.info(
-            "Scheduler triggering daily import: local_time={local_time}",
-            local_time=current_local.isoformat(),
+            "Scheduler triggering import: trigger={trigger}",
+            trigger=trigger,
         )
         result = run_neverending_songs_import(
             source_urls=self.settings.song_source_rest_urls,
@@ -81,18 +92,20 @@ class NeverendingScheduler:
         if not is_successful(result):
             error = result.failure()
             logger.error(
-                "Scheduled NeverendingSongs import failed: {error}",
+                "NeverendingSongs import failed: trigger={trigger}, error={error}",
+                trigger=trigger,
                 error=error,
             )
             notify_error_if_enabled(
                 self.settings,
-                f"Scheduled NeverendingSongs import failed: {error}",
+                f"NeverendingSongs import failed ({trigger}): {error}",
             )
             return False
 
         run_summary = result.unwrap()
         logger.info(
-            "Scheduled import completed: status={status}, imported={count}",
+            "Import completed: trigger={trigger}, status={status}, imported={count}",
+            trigger=trigger,
             status=run_summary.status.value,
             count=run_summary.imported_count,
         )

@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Source URLs for NeverendingSongs import (must be provided via env)
     song_source_rest_urls: list[str]
 
+    # Scheduler debug override
+    debug_sync_at_startup: bool = False
+
     # Notifications
     enable_mac_notifications: bool = False
 
