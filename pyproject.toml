@@ -158,9 +158,6 @@ format = "ruff format ."
 lint = "ruff check --fix ."
 typecheck-basedpyright = "basedpyright"
 typecheck-mypy = "mypy"
-test = "pytest"
-test-with-jupyter = "pytest --nbval"
-
 ci = [
     "format",
     "lint",
@@ -179,3 +176,11 @@ typecheck = ["typecheck-basedpyright", "typecheck-mypy"]
 quick-check = ["format", "lint", "typecheck-basedpyright"]
 # local server like start function
 start = "python src/shell/api.py"
+
+[tool.poe.tasks.test]
+cmd = "pytest"
+env = { ENABLE_MAC_NOTIFICATIONS = "false" }
+
+[tool.poe.tasks.test-with-jupyter]
+cmd = "pytest --nbval"
+env = { ENABLE_MAC_NOTIFICATIONS = "false" }
