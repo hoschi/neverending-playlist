@@ -3,6 +3,7 @@ import os
 import sqlite3
 import subprocess
 from datetime import UTC, datetime
+from typing import cast
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
@@ -153,7 +154,7 @@ def _fetch_payload(url: str) -> str:
     try:
         with urlopen(url, timeout=30) as response:  # noqa: S310
             data = response.read()
-        return data.decode("utf-8")
+        return cast(bytes, data).decode("utf-8")
     except HTTPError as error:
         raise RuntimeError(f"HTTP error for source {url}: {error.code}") from error
     except URLError as error:

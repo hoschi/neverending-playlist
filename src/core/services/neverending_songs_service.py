@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
@@ -92,7 +92,7 @@ def _is_hhmm(value: str) -> bool:
     return True
 
 
-def _parse_hhmm(value: str):
+def _parse_hhmm(value: str) -> time:
     return datetime.strptime(value, "%H:%M").time()
 
 

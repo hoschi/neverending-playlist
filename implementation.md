@@ -13,7 +13,7 @@ Dieses Dokument beschreibt die integrierte NeverendingSongs-Logik innerhalb von 
 
 ## Feldmapping (n8n -> jq -> Zielstruktur)
 
-Historische n8n-Feldpfade aus `current/n8n_workflow.json`:
+Historische n8n-Feldpfade aus dem bisherigen Workflow:
 
 - `artist = $json.song.entry[0].artist.entry[0].name`
 - `song = $json.song.entry[0].title`
@@ -70,12 +70,6 @@ flowchart TD
     D -->|error| H[Write neverending_songs_runs FAILED]
 ```
 
-## Lokale Prüfscripte
-
-- `current/run_neverending_songs_import.py`: Führt den Import mit aktuellen Settings aus.
-- `current/check_phase2_sqlite.py`: Zeigt Row-Counts und jeweils den letzten Import-/Song-Eintrag an.
-- `current/check_phase5_notifications.py`: Triggert eine Test-Benachrichtigung (nur bei aktiviertem `ENABLE_MAC_NOTIFICATIONS=true`).
-
 ## Playlist-Quelle (Phase 3)
 
 - `SONG_SOURCE` steuert den Backend-Adapter für Song-Requests (`SUPABASE` oder `SQLITE`).
@@ -125,6 +119,6 @@ flowchart TD
   - Scheduler-Verhalten (02:00 + Catch-up),
   - optionale macOS-Fehlerbenachrichtigungen.
 - `.env.example` beschreibt:
-  - vollständig konfigurierte `SONG_SOURCE_REST_URLS` (inkl. Zeitfenster in der URL),
+  - `SONG_SOURCE_REST_URLS` mit optionalen `HH:MM`-Zeitfenstern (werden auf gestern aufgelöst),
   - optionale Notification-Konfiguration via `ENABLE_MAC_NOTIFICATIONS`.
 - `implementation.md` dokumentiert Phasen 2 bis 6 konsistent zur Implementierung.
