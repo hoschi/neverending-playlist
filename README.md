@@ -241,11 +241,12 @@ nbstripout --install
 1. Copy `.env.example` to `.env`.
 2. Enter your Supabase and Spotify API credentials in the `.env` file.
 3. Set `SONG_SOURCE` to `SUPABASE` or `SQLITE` for playlist sync source selection.
-4. Configure `SONG_SOURCE_REST_URLS` with fully configured import URLs (including desired `start`/`end` range in each URL).
-5. **Optional**: Configure playlist autofill with `PLAYLIST_AUTOFILL_COUNT=25` to maintain a minimum track count.
-6. **Optional**: Configure watch service timeout with `WATCH_SERVICE_TIMEOUT_MINUTES=15` (default: 10).
-7. **Optional**: Enable startup debug import via `DEBUG_SYNC_AT_STARTUP=true`.
-8. **Optional**: Enable local macOS notifications via `ENABLE_MAC_NOTIFICATIONS=true`.
+4. Configure `SQLITE_MAX_SIZE_BYTES` in GB (e.g. `10` for 10 GB); the app converts this internally to bytes.
+5. Configure `SONG_SOURCE_REST_URLS` with fully configured import URLs (including desired `start`/`end` range in each URL).
+6. **Optional**: Configure playlist autofill with `PLAYLIST_AUTOFILL_COUNT=25` to maintain a minimum track count.
+7. **Optional**: Configure watch service timeout with `WATCH_SERVICE_TIMEOUT_MINUTES=15` (default: 10).
+8. **Optional**: Enable startup debug import via `DEBUG_SYNC_AT_STARTUP=true`.
+9. **Optional**: Enable local macOS notifications via `ENABLE_MAC_NOTIFICATIONS=true`.
 
 ### 4. NeverendingSongs Import and Scheduler
 

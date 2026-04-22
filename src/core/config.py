@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import ClassVar, Literal
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,6 +53,15 @@ class Settings(BaseSettings):
     # SSL
     ssl_cert_path: str = "ssl/cert.pem"
     ssl_key_path: str = "ssl/key.pem"
+
+    @field_validator("sqlite_max_size_bytes", mode="before")
+    @classmethod
+    def _convert_sqlite_max_size_gb_to_bytes(cls, value: int | str) -> int:
+        """Parses SQLITE_MAX_SIZE_BYTES as GB and converts to bytes."""
+        size_gb = int(value)
+        if size_gb <= 0:
+            raise ValueError("SQLITE_MAX_SIZE_BYTES must be greater than 0 GB")
+        return size_gb * 1024 * 1024 * 1024
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env",
