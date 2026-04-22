@@ -240,13 +240,14 @@ nbstripout --install
 
 1. Copy `.env.example` to `.env`.
 2. Enter your Supabase and Spotify API credentials in the `.env` file.
-3. Set `SONG_SOURCE` to `SUPABASE` or `SQLITE` for playlist sync source selection.
+3. `SONG_SOURCE` defaults to `SQLITE`; set it to `SUPABASE` only if you want Supabase as playlist sync source.
 4. Configure `SQLITE_MAX_SIZE_BYTES` in GB (e.g. `10` for 10 GB); the app converts this internally to bytes.
-5. Configure `SONG_SOURCE_REST_URLS` with fully configured import URLs (including desired `start`/`end` range in each URL).
-6. **Optional**: Configure playlist autofill with `PLAYLIST_AUTOFILL_COUNT=25` to maintain a minimum track count.
-7. **Optional**: Configure watch service timeout with `WATCH_SERVICE_TIMEOUT_MINUTES=15` (default: 10).
-8. **Optional**: Enable startup debug import via `DEBUG_SYNC_AT_STARTUP=true`.
-9. **Optional**: Enable local macOS notifications via `ENABLE_MAC_NOTIFICATIONS=true`.
+5. Configure your source URLs in `SONG_SOURCE_REST_URLS` as a JSON list (multiple sources supported).
+6. For each source URL, set `start`/`end` either as full timestamps or as `HH:MM` (e.g. `07:00`/`22:00`); `HH:MM` is resolved to yesterday's date automatically.
+7. **Optional**: Configure playlist autofill with `PLAYLIST_AUTOFILL_COUNT=25` to maintain a minimum track count.
+8. **Optional**: Configure watch service timeout with `WATCH_SERVICE_TIMEOUT_MINUTES=15` (default: 10).
+9. **Optional**: Enable startup debug import via `DEBUG_SYNC_AT_STARTUP=true`.
+10. **Optional**: Enable local macOS notifications via `ENABLE_MAC_NOTIFICATIONS=true`.
 
 ### 4. NeverendingSongs Import and Scheduler
 
@@ -263,6 +264,14 @@ nbstripout --install
 - Daily run is eligible from 02:00 local time onward.
 - If no successful run exists for today, a catch-up import is triggered.
 - If `DEBUG_SYNC_AT_STARTUP=true`, one immediate startup import is triggered before the hourly scheduler loop starts.
+
+**Quick check (latest imported songs):**
+
+Run this command to show the 5 newest rows in `song_requests`:
+
+```bash
+sqlite3 -header -column neverending_songs.db "SELECT id, artist, song, airtime, source FROM song_requests ORDER BY id DESC LIMIT 5;"
+```
 
 ### 5. Linking your Spotify Account
 
@@ -321,6 +330,8 @@ This application uses the OAuth 2.0 Authorization Code Flow to access your Spoti
 Upon successful authorization, the application will automatically encrypt and save a `SPOTIFY_REFRESH_TOKEN` to your `.env` file. The service will use this token to stay logged in.
 
 ### 7. Supabase
+
+Supabase setup is optional and only required when `SONG_SOURCE=SUPABASE` (default is `SQLITE`).
 
 #### Locally Hosted Supabase Instance
 

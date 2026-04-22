@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     supabase_table: str
 
     # Song source backend
-    song_source: Literal["SUPABASE", "SQLITE"] = "SUPABASE"
+    song_source: Literal["SUPABASE", "SQLITE"] = "SQLITE"
 
     # SQLite backend
     sqlite_db_path: str = "neverending_songs.db"

@@ -15,7 +15,12 @@ from src.core.models import (
     NeverendingSongsImportStatus,
     NeverendingSongsMappedRecord,
 )
-from src.core.services.neverending_songs_service import source_from_url
+from src.core.services.neverending_songs_service import (
+    build_source_url_with_window,
+    build_yesterday_utc_window_iso,
+    resolve_source_window,
+    source_from_url,
+)
 from src.core.sqlite_schema import (
     IMPORT_RUNS_TABLE,
     SONG_REQUESTS_TABLE,
@@ -32,6 +37,7 @@ def run_neverending_songs_import(
     source_urls: list[str],
     sqlite_db_path: str,
     sqlite_max_size_bytes: int,
+    window_minutes: int = 20,
 ) -> Result[NeverendingSongsImportRun, Exception]:
     """Imports songs from configured REST sources into SQLite."""
     if not source_urls:
@@ -49,15 +55,34 @@ def run_neverending_songs_import(
         )
 
     try:
+        start_iso, end_iso = build_yesterday_utc_window_iso(
+            window_end=datetime.now(UTC),
+            window_minutes=window_minutes,
+        )
         mapped_records: list[NeverendingSongsMappedRecord] = []
+        resolved_windows: list[str] = []
 
         for source_url in source_urls:
             source_name = source_from_url(source_url)
-            payload = _fetch_payload(source_url)
+            source_start_iso, source_end_iso = resolve_source_window(
+                source_url,
+                fallback_start_iso=start_iso,
+                fallback_end_iso=end_iso,
+                now_local=datetime.now().astimezone(),
+            )
+            resolved_url = _resolve_source_url(
+                source_url,
+                source_start_iso,
+                source_end_iso,
+            )
+            resolved_windows.append(
+                f"{source_name}:{source_start_iso}->{source_end_iso}"
+            )
+            payload = _fetch_payload(resolved_url)
             mapped_records.extend(_map_payload_with_jq(payload, source_name))
 
         imported_count = _write_records_to_sqlite(sqlite_db_path, mapped_records)
-        run_details = f"source_urls={len(source_urls)}"
+        run_details = ";".join(resolved_windows)
         _write_import_run(
             sqlite_db_path=sqlite_db_path,
             status=NeverendingSongsImportStatus.SUCCESS,
@@ -118,6 +143,10 @@ def _guard_sqlite_file_size(
         )
 
     return Success(None)
+
+
+def _resolve_source_url(source_url: str, start_iso: str, end_iso: str) -> str:
+    return build_source_url_with_window(source_url, start_iso, end_iso)
 
 
 def _fetch_payload(url: str) -> str:
