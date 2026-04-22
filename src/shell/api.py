@@ -3,7 +3,9 @@
 This module contains all API endpoints and the FastAPI application configuration.
 """
 
+import signal
 import ssl
+import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -442,19 +444,45 @@ async def clear_played_watchmode_endpoint(
 
 
 def main() -> None:  # pragma: no cover
-    """Main function to run the FastAPI application."""
+    """Main function to run the FastAPI application with signal handling."""
     settings = get_settings()
+
     # Create SSL context
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     print("STARTING with main config")
     ssl_context.load_cert_chain(settings.ssl_cert_path, settings.ssl_key_path)
-    uvicorn.run(
+
+    # Create uvicorn config
+    config = uvicorn.Config(
         app,
         host="0.0.0.0",
         port=6361,
         ssl_certfile=settings.ssl_cert_path,
         ssl_keyfile=settings.ssl_key_path,
+        log_config=None,  # Use our own logging setup
     )
+
+    server = uvicorn.Server(config)
+
+    # Setup signal handlers for graceful shutdown
+    def handle_signal(signum: int, frame) -> None:  # noqa: ARG001
+        logger.info(f"Received signal {signum}, shutting down gracefully...")
+        server.should_exit = True
+
+    # Register signal handlers
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
+
+    try:
+        logger.info("Starting server...")
+        server.run()
+    except KeyboardInterrupt:
+        logger.info("Received KeyboardInterrupt, shutting down...")
+    except Exception as e:
+        logger.error(f"Server error: {e}")
+        sys.exit(1)
+    finally:
+        logger.info("Server shutdown complete")
 
 
 if __name__ == "__main__":  # pragma: no cover
