@@ -1,10 +1,14 @@
 import sqlite3
+from unittest.mock import patch
 
 from returns.pipeline import is_successful
 
 from src.core.models import NeverendingSongsImportStatus
 from src.core.sqlite_schema import IMPORT_RUNS_TABLE, SQLITE_SCHEMA_STATEMENTS
-from src.shell.neverending_songs import run_neverending_songs_import
+from src.shell.neverending_songs import (
+    _ensure_jq_available,
+    run_neverending_songs_import,
+)
 
 
 def test_run_neverending_songs_import_persists_skipped_max_size_run(tmp_path) -> None:
@@ -47,3 +51,16 @@ def test_run_neverending_songs_import_persists_skipped_max_size_run(tmp_path) ->
     assert row[1] == 0
     assert row[2] == 1
     assert "SQLite file size limit exceeded" in str(row[3])
+
+
+def test_ensure_jq_available_raises_clear_error_when_binary_missing() -> None:
+    with patch("src.shell.neverending_songs.shutil.which", return_value=None):
+        try:
+            _ensure_jq_available()
+        except RuntimeError as error:
+            message = str(error)
+            assert "jq is required" in message
+            assert "brew install jq" in message
+            assert "apt install jq" in message
+        else:
+            raise AssertionError("Expected RuntimeError when jq is unavailable")

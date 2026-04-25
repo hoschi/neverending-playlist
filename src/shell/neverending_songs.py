@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import sqlite3
 import subprocess
 from datetime import UTC, datetime
@@ -179,9 +180,11 @@ def _fetch_payload(url: str) -> str:
 def _map_payload_with_jq(
     payload: str, source_name: str
 ) -> list[NeverendingSongsMappedRecord]:
+    jq_executable = _ensure_jq_available()
+
     process = subprocess.run(
         [
-            "jq",
+            jq_executable,
             "-c",
             "--arg",
             "source",
@@ -205,6 +208,16 @@ def _map_payload_with_jq(
         records.append(NeverendingSongsMappedRecord.model_validate(row))
 
     return records
+
+
+def _ensure_jq_available() -> str:
+    jq_executable = shutil.which("jq")
+    if jq_executable is None:
+        raise RuntimeError(
+            "jq is required for NeverendingSongs import but was not found on PATH. "
+            "Install jq first (macOS: `brew install jq`, Debian/Ubuntu: `apt install jq`)."
+        )
+    return jq_executable
 
 
 def _ensure_sqlite_schema(connection: sqlite3.Connection) -> None:
@@ -253,7 +266,7 @@ def _write_import_run(
     status: NeverendingSongsImportStatus,
     imported_count: int,
     source_count: int,
-    details: str,
+    details: str | None,
 ) -> None:
     connection = sqlite3.connect(sqlite_db_path)
     try:
