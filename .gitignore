@@ -35,3 +35,4 @@ ssl/
 .env.mine
 .roo/mcp.json
 tmp/
+*.db

@@ -11,6 +11,21 @@ class SongAdditionStatus(str, Enum):
     ERROR = "ERROR"
 
 
+class SongSourceBackend(str, Enum):
+    """Supported backends for reading song requests."""
+
+    SUPABASE = "SUPABASE"
+    SQLITE = "SQLITE"
+
+
+class NeverendingSongsImportStatus(str, Enum):
+    """Result status of a NeverendingSongs import run."""
+
+    SUCCESS = "SUCCESS"
+    SKIPPED_MAX_DB_SIZE = "SKIPPED_MAX_DB_SIZE"
+    FAILED = "FAILED"
+
+
 class Song(BaseModel):
     """Represents a song with artist and title."""
 
@@ -26,6 +41,40 @@ class SongRequest(BaseModel):
     status: SongAdditionStatus | None = Field(
         default=None, description="The status of the song addition attempt to Spotify."
     )
+
+
+class NeverendingSongsSourceConfig(BaseModel):
+    """Configuration for one REST source used by NeverendingSongs."""
+
+    rest_url: str = Field(..., description="REST endpoint URL for source data.")
+
+
+class NeverendingSongsMappedRecord(BaseModel):
+    """Mapped record from source payload ready for database persistence."""
+
+    artist: str = Field(..., description="Artist name.")
+    song: str = Field(..., description="Song title.")
+    airtime: str = Field(..., description="Original source airtime timestamp.")
+    source: str = Field(..., description="Source system identifier.")
+    status: SongAdditionStatus | None = Field(
+        default=None,
+        description="Playlist sync processing status.",
+    )
+    requested_by: str | None = Field(
+        default=None,
+        description="Optional requestor metadata.",
+    )
+
+
+class NeverendingSongsImportRun(BaseModel):
+    """Summary of one NeverendingSongs import execution."""
+
+    status: NeverendingSongsImportStatus = Field(..., description="Run status.")
+    imported_count: int = Field(
+        default=0, description="Count of rows written to database."
+    )
+    source_count: int = Field(default=0, description="Count of queried sources.")
+    details: str | None = Field(default=None, description="Optional technical details.")
 
 
 class SyncFailure(BaseModel):

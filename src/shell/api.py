@@ -3,7 +3,9 @@
 This module contains all API endpoints and the FastAPI application configuration.
 """
 
+import asyncio
 import ssl
+import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -11,7 +13,7 @@ from typing import Annotated
 import spotipy  # type: ignore
 import uvicorn
 from dotenv import set_key
-from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from loguru import logger
 from pydantic import SecretStr
@@ -29,13 +31,22 @@ from src.core.services.playlist_service import (
     clear_played_tracks_from_playlist,
     sync_playlist,
 )
-from src.shell.clients import ConcreteSpotifyClient, ConcreteSupabaseClient
+from src.shell.clients import (
+    ConcreteSpotifyClient,
+    ConcreteSqliteClient,
+    ConcreteSupabaseClient,
+)
 from src.shell.logging_config import setup_logging
+from src.shell.mac_notifications import notify_error_if_enabled
+from src.shell.neverending_scheduler import NeverendingScheduler
 from src.shell.watch_service import watch_service
 
 
-def get_supabase_client() -> SupabaseClient:
-    """FastAPI dependency provider for the Supabase client."""
+def get_song_request_client() -> SupabaseClient:
+    """FastAPI dependency provider for the configured song request backend."""
+    settings = get_settings()
+    if settings.song_source == "SQLITE":
+        return ConcreteSqliteClient()
     return ConcreteSupabaseClient()
 
 
@@ -70,14 +81,33 @@ async def lifespan(_: object) -> AsyncGenerator[None, None]:  # pragma: no cover
     setup_logging()
     logger.info("FastAPI application starting up...")
 
-    yield
+    settings = get_settings()
+    scheduler = NeverendingScheduler(settings)
+    await scheduler.start()
 
-    # Shutdown lifecycle
-    logger.info("FastAPI application shutting down...")
-    logger.info("FastAPI application shutdown complete")
+    try:
+        yield
+    except asyncio.CancelledError:
+        logger.info("FastAPI lifespan cancelled during shutdown")
+    finally:
+        await scheduler.stop()
+        logger.info("FastAPI application shutting down...")
+        logger.info("FastAPI application shutdown complete")
 
 
 app: FastAPI = FastAPI(lifespan=lifespan)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:
+    """Handles unhandled server errors with optional local notifications."""
+    settings = get_settings()
+    notify_error_if_enabled(settings, f"Unhandled server error: {exc}")
+    logger.exception("Unhandled server error")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An internal error occurred."},
+    )
 
 
 @app.get("/login", status_code=307)
@@ -140,12 +170,12 @@ def callback(
 
 @app.post("/sync-playlist")
 async def sync_playlist_endpoint(
-    supabase_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
+    song_request_client: Annotated[SupabaseClient, Depends(get_song_request_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
     max_count: int = Query(10, gt=0, le=50),
 ) -> Response:
     """API endpoint to synchronize the playlist."""
-    result = await sync_playlist(supabase_client, spotify_client, max_count)
+    result = await sync_playlist(song_request_client, spotify_client, max_count)
 
     if not is_successful(result):
         raise HTTPException(status_code=500, detail=str(result.failure()))
@@ -178,7 +208,7 @@ async def sync_playlist_endpoint(
 
 @app.post("/clear-played")
 async def clear_played_endpoint(
-    supabase_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
+    song_request_client: Annotated[SupabaseClient, Depends(get_song_request_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
 ) -> Response:
     """API endpoint to clear played tracks from the configured playlist."""
@@ -187,7 +217,7 @@ async def clear_played_endpoint(
     try:
         result = await clear_played_tracks_from_playlist(
             spotify_client,
-            supabase_client,
+            song_request_client,
             settings.spotify_playlist_id,
             settings.playlist_autofill_count,
         )
@@ -244,7 +274,7 @@ async def clear_played_endpoint(
             content={
                 "deleted_count": deleted_count,
                 "filled_count": filled_count,
-                "message": "Partial success: Not enough songs available in Supabase to autofill the playlist",
+                "message": "Partial success: Not enough songs available in the selected backend to autofill the playlist",
             },
         )
 
@@ -259,7 +289,7 @@ async def clear_played_endpoint(
 
 @app.get("/clear-played-watchmode")
 async def clear_played_watchmode_endpoint(
-    supabase_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
+    song_request_client: Annotated[SupabaseClient, Depends(get_song_request_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
 ) -> JSONResponse:
     """API endpoint to activate watchmode for automatic playlist clearing."""
@@ -304,7 +334,7 @@ async def clear_played_watchmode_endpoint(
         try:
             watch_service_instance = watch_service(
                 spotify_client=spotify_client,
-                supabase_client=supabase_client,
+                supabase_client=song_request_client,
             )
 
             current_state = await watch_service_instance.get_state()
@@ -418,17 +448,34 @@ async def clear_played_watchmode_endpoint(
 def main() -> None:  # pragma: no cover
     """Main function to run the FastAPI application."""
     settings = get_settings()
+
     # Create SSL context
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     print("STARTING with main config")
     ssl_context.load_cert_chain(settings.ssl_cert_path, settings.ssl_key_path)
-    uvicorn.run(
+
+    # Create uvicorn config
+    config = uvicorn.Config(
         app,
         host="0.0.0.0",
         port=6361,
         ssl_certfile=settings.ssl_cert_path,
         ssl_keyfile=settings.ssl_key_path,
+        log_config=None,  # Use our own logging setup
     )
+
+    server = uvicorn.Server(config)
+
+    try:
+        logger.info("Starting server...")
+        server.run()
+    except KeyboardInterrupt:
+        logger.info("Received KeyboardInterrupt, shutting down...")
+    except Exception as e:
+        logger.error(f"Server error: {e}")
+        sys.exit(1)
+    finally:
+        logger.info("Server shutdown complete")
 
 
 if __name__ == "__main__":  # pragma: no cover

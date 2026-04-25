@@ -14,13 +14,13 @@ from src.core.protocols import SpotifyClient, SupabaseClient
 
 
 async def fetch_pending_song_requests(
-    supabase_client: SupabaseClient, max_count: int
+    song_request_client: SupabaseClient, max_count: int
 ) -> Result[list[SongRequest], Exception]:
-    """Fetches a list of pending song requests from Supabase."""
+    """Fetches a list of pending song requests from the configured backend."""
     logger.info(
         "Fetching up to {max_count} pending song requests.", max_count=max_count
     )
-    result = await supabase_client.fetch_pending_song_requests(max_count)
+    result = await song_request_client.fetch_pending_song_requests(max_count)
     if is_successful(result):
         requests = result.unwrap()
         logger.debug(
@@ -66,7 +66,7 @@ async def add_songs_to_spotify(
 
 
 async def sync_playlist(
-    supabase_client: SupabaseClient, spotify_client: SpotifyClient, max_count: int
+    song_request_client: SupabaseClient, spotify_client: SpotifyClient, max_count: int
 ) -> Result[SyncResult, Exception]:
     """
     Orchestrates the synchronization of the playlist.
@@ -74,7 +74,7 @@ async def sync_playlist(
     """
     logger.info("Starting playlist synchronization.")
 
-    requests_result = await fetch_pending_song_requests(supabase_client, max_count)
+    requests_result = await fetch_pending_song_requests(song_request_client, max_count)
     if not is_successful(requests_result):
         logger.error(
             "Playlist sync failed during fetch: {error}",
@@ -104,12 +104,12 @@ async def sync_playlist(
     )
     # Extract only the SongRequest objects for the database update
     song_requests_only = [song_request for song_request, _ in song_statuses]
-    update_result = await supabase_client.update_song_requests_as_added(
+    update_result = await song_request_client.update_song_requests_as_added(
         song_requests_only
     )
     if not is_successful(update_result):
         logger.error(
-            "Playlist sync failed during supabase update: {error}",
+            "Playlist sync failed during backend update: {error}",
             error=update_result.failure(),
         )
         return Result.from_failure(update_result.failure())
@@ -147,7 +147,7 @@ async def sync_playlist(
 
 
 async def _autofill_playlist(
-    supabase_client: SupabaseClient,
+    song_request_client: SupabaseClient,
     spotify_client: SpotifyClient,
     config_playlist_id: str,
     minimum_track_count: int,
@@ -162,7 +162,7 @@ async def _autofill_playlist(
     - A real error occurs (not just "not found" songs)
 
     Args:
-        supabase_client: The Supabase client to fetch new songs
+        song_request_client: The configured song request backend client
         spotify_client: The Spotify client to interact with the API
         config_playlist_id: The configured playlist ID from settings
         minimum_track_count: Minimum number of tracks that should be in the playlist
@@ -226,7 +226,7 @@ async def _autofill_playlist(
         # Use sync logic to fetch and add new songs
         try:
             sync_result = await sync_playlist(
-                supabase_client, spotify_client, tracks_needed
+                song_request_client, spotify_client, tracks_needed
             )
 
             if not is_successful(sync_result):
@@ -310,7 +310,7 @@ async def _autofill_playlist(
 
 async def clear_played_tracks_from_playlist(
     spotify_client: SpotifyClient,
-    supabase_client: SupabaseClient,
+    song_request_client: SupabaseClient,
     config_playlist_id: str,
     autofill_count: int | None,
 ) -> Result[dict[str, int], PlaylistClearError]:
@@ -319,7 +319,7 @@ async def clear_played_tracks_from_playlist(
 
     Args:
         spotify_client: The Spotify client to interact with the API
-        supabase_client: The Supabase client to fetch new songs
+        song_request_client: The configured song request backend client
         config_playlist_id: The configured playlist ID from settings
         autofill_count: Number of tracks to maintain after clearing (None = no autofill)
 
@@ -517,7 +517,7 @@ async def clear_played_tracks_from_playlist(
     filled_count = 0
     if autofill_count is not None and autofill_count > 0:
         autofill_result = await _autofill_playlist(
-            supabase_client, spotify_client, config_playlist_id, autofill_count
+            song_request_client, spotify_client, config_playlist_id, autofill_count
         )
 
         if not is_successful(autofill_result):

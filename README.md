@@ -1,13 +1,16 @@
 # Neverending Playlist
 
-This project provides a web service to synchronize song requests from a Supabase database to a Spotify playlist. Programmed almost exclusively with LLMs, this repo implements my [Python blueprint for AI assisted development](https://github.com/hoschi/python-starter).
+This project provides a web service to synchronize song requests from a configurable backend (Supabase or SQLite) to a Spotify playlist. Programmed almost exclusively with LLMs, this repo implements my [Python blueprint for AI assisted development](https://github.com/hoschi/python-starter).
 
 ## Features
 
-- **Playlist Synchronization**: A FastAPI endpoint (`POST /sync-playlist`) fetches pending song requests from a Supabase table, finds the corresponding tracks on Spotify, and adds them to a specified playlist. The `/sync-playlist` endpoint returns a comprehensive response with details about successful additions, not found tracks, and any errors encountered.
+- **Playlist Synchronization**: A FastAPI endpoint (`POST /sync-playlist`) fetches pending song requests from the configured source backend (`SUPABASE` or `SQLITE`), finds the corresponding tracks on Spotify, and adds them to a specified playlist. The `/sync-playlist` endpoint returns a comprehensive response with details about successful additions, not found tracks, and any errors encountered.
 - **Clear Played Tracks with Autofill**: A FastAPI endpoint (`POST /clear-played`) removes tracks from the beginning of a Spotify playlist that have already been played. This endpoint only works when music is actively playing from the configured playlist. Optionally configure automatic playlist refilling via `PLAYLIST_AUTOFILL_COUNT` to maintain a constant number of tracks after clearing.
 - **Configurable**: All external service credentials and settings are managed via a `.env` file.
 - **Configurable Watch Service**: The watch service that automatically clears played tracks can be configured with custom timeout intervals using the `WATCH_SERVICE_TIMEOUT_MINUTES` environment variable (default: 10 minutes).
+- **NeverendingSongs Import Pipeline**: Integrated REST import (`SONG_SOURCE_REST_URLS`) stores mapped records in SQLite (`song_requests`) and writes run history to `neverending_songs_runs`.
+- **Built-in Scheduler with Catch-up**: A FastAPI lifespan background task checks hourly and runs the daily import at/after 02:00 local time, including reboot-safe catch-up based on persisted successful runs.
+- **Optional macOS Error Notifications**: When `ENABLE_MAC_NOTIFICATIONS=true`, scheduler and unhandled server errors can trigger local notifications via `osascript`.
 - **Robust & Testable**: Built with a "Functional Core, Imperative Shell" architecture, ensuring the business logic is isolated and easily testable. It uses the `returns` library for explicit, railway-oriented error handling.
 
 ## Motviation / Usage
@@ -24,11 +27,11 @@ It gives you one central spot to collect all your song discoveries — no matter
 
 Getting started is super simple, so you can begin right away:
 
-* **Copy & paste CSV data directly**
+- **Copy & paste CSV data directly**
   Perfect for small lists or quick finds you want to add immediately.
-* **Import files for large collections**
+- **Import files for large collections**
   Great for full tracklists or exports you already have somewhere.
-* **Use chatbots to structure messy or unformatted data**
+- **Use chatbots to structure messy or unformatted data**
   Blog posts, screenshots, text dumps — a chatbot can turn them into clean CSV files within seconds.
 
 Automation can be added later if you want — but it’s completely optional.
@@ -40,14 +43,14 @@ It syncs pending entries into your Spotify playlist, marks processed songs, hand
 
 This creates a continuous flow of music fed by:
 
-* Radio tracklists
-* Setlist.fm and live concert setlists
-* Music blogs and “top songs” articles
-* DJ sets and podcast chapters
-* YouTube playlists
-* AI-generated recommendations (“Give me 20 songs like …”)
-* Suggestions from chats, friends, forums, or social media
-* Any text source that a chatbot can turn into a table
+- Radio tracklists
+- Setlist.fm and live concert setlists
+- Music blogs and “top songs” articles
+- DJ sets and podcast chapters
+- YouTube playlists
+- AI-generated recommendations (“Give me 20 songs like …”)
+- Suggestions from chats, friends, forums, or social media
+- Any text source that a chatbot can turn into a table
 
 Whatever you discover — once it reaches Supabase, it becomes part of your growing playlist.
 
@@ -55,25 +58,27 @@ Whatever you discover — once it reaches Supabase, it becomes part of your grow
 
 The real magic isn’t just the automation, but how it changes your approach to finding music:
 
-* You discover songs in places you never looked before.
-* You start seeing potential playlist entries everywhere.
-* You use tools and AI more intentionally to expand your musical world.
-* Your playlist grows organically, without manual work.
+- You discover songs in places you never looked before.
+- You start seeing potential playlist entries everywhere.
+- You use tools and AI more intentionally to expand your musical world.
+- Your playlist grows organically, without manual work.
 
 The result is a playlist that evolves with you — surprising, alive, and continuously expanding.
 A playlist you curate, but that practically runs itself.
-A playlist that truly is *neverending*.
+A playlist that truly is _neverending_.
 
 ## API Endpoints
 
 ### POST /sync-playlist
 
-Synchronizes the playlist by fetching pending song requests from Supabase and adding them to Spotify.
+Synchronizes the playlist by fetching pending song requests from the configured backend and adding them to Spotify.
 
 **Query Parameters:**
+
 - `max_count` (optional, default: 10, max: 50): Maximum number of pending song requests to process.
 
 **Response:**
+
 ```json
 {
   "successful": ["123", "456"],
@@ -83,12 +88,14 @@ Synchronizes the playlist by fetching pending song requests from Supabase and ad
 ```
 
 **Response Fields:**
+
 - `successful`: List of song IDs that were successfully added to the playlist.
 - `not_found`: List of song IDs that could not be found on Spotify.
 - `errors`: List of error messages for songs that failed to be added due to errors.
 - **Important**: If any `errors` occur, the entire sync operation is considered failed.
 
 **Example Response:**
+
 ```json
 {
   "successful": ["1", "2", "3"],
@@ -102,6 +109,7 @@ Synchronizes the playlist by fetching pending song requests from Supabase and ad
 Removes tracks from the beginning of the configured playlist that have already been played. This operation is conditional and will only execute if music is actively playing from the correct playlist. Optionally automatically refills the playlist using existing sync logic when `PLAYLIST_AUTOFILL_COUNT` is configured.
 
 **Response (200 OK) - Nothing to Delete:**
+
 ```json
 {
   "deleted_count": 0,
@@ -110,6 +118,7 @@ Removes tracks from the beginning of the configured playlist that have already b
 ```
 
 **Response (200 OK) - Successful Autofill:**
+
 ```json
 {
   "deleted_count": 5,
@@ -118,30 +127,35 @@ Removes tracks from the beginning of the configured playlist that have already b
 ```
 
 **Response (207 Multi-Status) - Partial Success:**
+
 ```json
 {
   "deleted_count": 3,
   "filled_count": 0,
-  "message": "Partial success: Deleted 3 tracks. Not enough songs available in Supabase to complete autofill to minimum count."
+  "message": "Partial success: Not enough songs available in the selected backend to autofill the playlist"
 }
 ```
 
 **Response Fields:**
+
 - `deleted_count`: Number of tracks successfully removed from the playlist (not including autofilled tracks).
 - `filled_count`: Number of tracks automatically added to the playlist during autofill to maintain the minimum track count.
 - `message`: Additional context information (primarily for 207 responses).
 
 **Autofill Behavior:**
 When `PLAYLIST_AUTOFILL_COUNT` is configured in the environment:
+
 - The number defines the **minimum track count** to maintain in the playlist after clearing
-- After clearing played tracks, the system automatically fetches new songs from Supabase
+- After clearing played tracks, the system automatically fetches new songs from the configured source backend
 - "Not found" songs are treated as success and ignored
 - **If error_count > 0, the entire operation fails** - no continuation with warnings
 - The system continues refilling automatically until the minimum track count is achieved
 - If no songs have been deleted, none will be added
 
 **Error Responses:**
+
 - **400 Bad Request**: Current track is not from the configured playlist
+
   ```json
   {
     "detail": {
@@ -152,6 +166,7 @@ When `PLAYLIST_AUTOFILL_COUNT` is configured in the environment:
   ```
 
 - **409 Conflict**: No active playback found
+
   ```json
   {
     "detail": {
@@ -172,6 +187,7 @@ When `PLAYLIST_AUTOFILL_COUNT` is configured in the environment:
   ```
 
 **Status Code Explanations:**
+
 - **200 OK**: Success - either nothing to delete (`deleted_count == 0`) OR successful autofill (`filled_count > 0`)
 - **207 Multi-Status**: Partial success - tracks deleted but insufficient songs available for autofill (`deleted_count > 0` AND `filled_count == 0`)
 - **400 Bad Request**: Current track is not from the configured playlist
@@ -179,25 +195,29 @@ When `PLAYLIST_AUTOFILL_COUNT` is configured in the environment:
 - **500 Internal Server Error**: Unexpected errors during processing
 
 **Example Usage:**
+
 ```bash
 curl -X POST "http://localhost:6361/clear-played"
 ```
 
 **Configuration Example:**
+
 ```bash
 # In your .env file
 PLAYLIST_AUTOFILL_COUNT=25  # Optional: Maintain 25 tracks after clearing
 ```
 
 **Requirements:**
+
 - Music must be actively playing from Spotify
 - The currently playing track must be from the configured playlist
 - OAuth authorization must be completed
-- For autofill: Supabase table must contain pending song requests
+- For autofill: the configured source backend must contain pending song requests
 
 ## Project Setup
 
 ### 1. Prerequisites
+
 - [Conda](https://docs.conda.io/en/latest/miniconda.html) for environment management.
 - [Poetry](https://python-poetry.org/docs/#installation) for package management.
 - [Poe the Poet](https://poethepoet.natn.io/installation.html) for task management.
@@ -217,48 +237,85 @@ nbstripout --install
 ```
 
 ### 3. Configuration
+
 1. Copy `.env.example` to `.env`.
 2. Enter your Supabase and Spotify API credentials in the `.env` file.
-3. **Optional**: Configure playlist autofill by adding `PLAYLIST_AUTOFILL_COUNT=25` to maintain a minimum number of 25 tracks after clearing.
-4. **Optional**: Configure watch service timeout by adding `WATCH_SERVICE_TIMEOUT_MINUTES=15` to set the interval between automatic checks (default: 10 minutes).
+3. `SONG_SOURCE` defaults to `SQLITE`; set it to `SUPABASE` only if you want Supabase as playlist sync source.
+4. Configure `SQLITE_MAX_SIZE_GB` (e.g. `10` for 10 GB); the app converts this internally to bytes.
+5. Configure your source URLs in `SONG_SOURCE_REST_URLS` as a JSON list (multiple sources supported).
+   Example with two sources:
+   ```bash
+   SONG_SOURCE_REST_URLS='["https://iris-bob.loverad.io/search.json?station=110&start=07:00&end=22:00", "https://example.com/source.json?station=42&start=07:00&end=22:00"]'
+   ```
+6. For each source URL, set `start`/`end` either as full timestamps or as `HH:MM` (e.g. `07:00`/`22:00`); `HH:MM` is resolved to yesterday's date automatically.
+7. **Optional**: Configure playlist autofill with `PLAYLIST_AUTOFILL_COUNT=25` to maintain a minimum track count.
+8. **Optional**: Configure watch service timeout with `WATCH_SERVICE_TIMEOUT_MINUTES=15` (default: 10).
+9. **Optional**: Enable startup debug import via `DEBUG_SYNC_AT_STARTUP=true`.
+10. **Optional**: Enable local macOS notifications via `ENABLE_MAC_NOTIFICATIONS=true`.
 
-### 4. Linking your Spotify Account
+### 4. NeverendingSongs Import and Scheduler
+
+- Import implementation: `src/shell/neverending_songs.py`
+- Scheduler implementation: `src/shell/neverending_scheduler.py`
+- Scheduler integration: FastAPI lifespan in `src/shell/api.py`
+- Persistence tables in SQLite:
+  - `song_requests` for imported records
+  - `neverending_songs_runs` for run history (`SUCCESS`, `FAILED`, `SKIPPED_MAX_DB_SIZE`)
+- `SQLITE_MAX_SIZE_GB` is a soft guard: when exceeded, the import is skipped but a small `SKIPPED_MAX_DB_SIZE` audit row is still written to `neverending_songs_runs`.
+
+**Scheduler behavior:**
+
+- Hourly checks at full hour boundaries.
+- Daily run is eligible from 02:00 local time onward.
+- If no successful run exists for today, a catch-up import is triggered.
+- If `DEBUG_SYNC_AT_STARTUP=true`, one immediate startup import is triggered before the hourly scheduler loop starts.
+
+**Quick check (latest imported songs):**
+
+Run this command to show the 5 newest rows in `song_requests`:
+
+```bash
+sqlite3 -header -column neverending_songs.db "SELECT id, artist, song, airtime, source FROM song_requests ORDER BY id DESC LIMIT 5;"
+```
+
+### 5. Linking your Spotify Account
 
 To link your Spotify account to the service, follow these steps:
 
 1. **Create a Spotify Developer Application**
-    - Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and create a new application.
-    - Copy the **Client ID** and **Client Secret** into the `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` fields in your `.env` file.
-     - Add the URI from `SPOTIFY_REDIRECT_URI` (`http://localhost:6361/callback`) to the "Redirect URIs" section in the dashboard. The URI must match exactly.
+   - Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and create a new application.
+   - Copy the **Client ID** and **Client Secret** into the `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` fields in your `.env` file.
+   - Add the URI from `SPOTIFY_REDIRECT_URI` (`http://localhost:6361/callback`) to the "Redirect URIs" section in the dashboard. The URI must match exactly.
 
 2. **Enter your Playlist ID**
-    - Create a new playlist in your Spotify account.
-    - Copy the playlist ID from the URL and enter it in `SPOTIFY_PLAYLIST_ID`.
+   - Create a new playlist in your Spotify account.
+   - Copy the playlist ID from the URL and enter it in `SPOTIFY_PLAYLIST_ID`.
 
 3. **Generate an Encryption Key**
-    - Generate a 32-byte, URL-safe, base64-encoded key:
-      ```python
-      from cryptography.fernet import Fernet
-      key = Fernet.generate_key().decode()
-      print(key)
-      ```
-    - Add this key as `ENCRYPTION_KEY` in your `.env` file.
+   - Generate a 32-byte, URL-safe, base64-encoded key:
+     ```python
+     from cryptography.fernet import Fernet
+     key = Fernet.generate_key().decode()
+     print(key)
+     ```
+   - Add this key as `ENCRYPTION_KEY` in your `.env` file.
 
 4. **Perform OAuth Authorization**
-    - Start the web service:
-      ```bash
-      poetry run python src/shell/api.py
-      ```
-    - Open `https://localhost:6361/login` in your browser.
-    - You will be redirected to Spotify to authorize the application.
-    - After successful login and approval, you will be redirected back to the application (`/callback`).
-    - The service will automatically save the encrypted `SPOTIFY_REFRESH_TOKEN` in your `.env` file.
+   - Start the web service:
+     ```bash
+     poetry run python src/shell/api.py
+     ```
+   - Open `https://localhost:6361/login` in your browser.
+   - You will be redirected to Spotify to authorize the application.
+   - After successful login and approval, you will be redirected back to the application (`/callback`).
+   - The service will automatically save the encrypted `SPOTIFY_REFRESH_TOKEN` in your `.env` file.
 
 **Note:** The values for `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, and `SPOTIFY_REDIRECT_URI` must match exactly with the settings in the Spotify Developer Dashboard. The redirect URI must be registered there.
 
 For more details on Spotify OAuth, see the [Spotipy documentation](https://spotipy.readthedocs.io/en/latest/#authorization-code-flow) and the [Spotify Developer Guide](https://developer.spotify.com/documentation/web-api/tutorials/code-flow).
 
-### 5. Authorization
+### 6. Authorization
+
 This application uses the OAuth 2.0 Authorization Code Flow to access your Spotify account. You must authorize it once before you can use the `/sync-playlist` endpoint.
 
 1.  **Configure Environment**: Ensure your `.env` file has the correct `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, and `SPOTIFY_REDIRECT_URI`. The `SPOTIFY_REDIRECT_URI` must match what you have configured in your Spotify Developer Dashboard.
@@ -277,11 +334,14 @@ This application uses the OAuth 2.0 Authorization Code Flow to access your Spoti
 
 Upon successful authorization, the application will automatically encrypt and save a `SPOTIFY_REFRESH_TOKEN` to your `.env` file. The service will use this token to stay logged in.
 
-### 6. Supabase
+### 7. Supabase
+
+Supabase setup is optional and only required when `SONG_SOURCE=SUPABASE` (default is `SQLITE`).
 
 #### Locally Hosted Supabase Instance
 
 **Finding Access Credentials**:
+
 - Go to your local Supabase UI
 - Click on the profile icon in the top right corner and select "Command Menu"
 - Run "Copy API URL" and paste it into `SUPABASE_URL` in the `.env` file
@@ -336,7 +396,7 @@ FROM your_existing_table
 LIMIT 30;
 ```
 
-### 7. Setup SSL Certificates
+### 8. Setup SSL Certificates
 
 For development with HTTPS, you need to create SSL certificates and keys. This guide shows you how to create self-signed certificates for local development.
 
@@ -380,7 +440,9 @@ These self-signed certificates are only suitable for local development. For prod
 ## Daily Work
 
 ### Running the Service
+
 To start the web service, run the following command:
+
 ```bash
 poetry run python src/shell/api.py
 ```
@@ -428,6 +490,7 @@ Cursor and Gemini are already set up for you.
 
 **For other tools:**
 Explicitly include the main directive in your prompt. Example:
+
 ```bash
 claude "Refactor the 'process_data' function in 'src/core/services.py'. Strictly follow the instructions from 'ai-assistants/01-main-directives.md'."
 ```
