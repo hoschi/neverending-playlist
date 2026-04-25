@@ -17,9 +17,9 @@ async def test_quickstart_workflow() -> None:
     supabase_mock = MockSupabaseClient(pending_requests=requests)
     spotify_mock = MockSpotifyClient()
 
-    from src.shell.api import get_spotify_client, get_supabase_client
+    from src.shell.api import get_song_request_client, get_spotify_client
 
-    app.dependency_overrides[get_supabase_client] = lambda: supabase_mock
+    app.dependency_overrides[get_song_request_client] = lambda: supabase_mock
     app.dependency_overrides[get_spotify_client] = lambda: spotify_mock
 
     # Act

@@ -604,12 +604,12 @@ async def test_clear_played_watchmode_executed_successfully(
     """Test GET /clear-played-watchmode returns executed when successfully run."""
     from datetime import datetime, timedelta
 
-    from src.shell.api import app, get_spotify_client, get_supabase_client
+    from src.shell.api import app, get_song_request_client, get_spotify_client
 
     # Override the dependency
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
     mock_supabase_client = Mock()
-    app.dependency_overrides[get_supabase_client] = lambda: mock_supabase_client
+    app.dependency_overrides[get_song_request_client] = lambda: mock_supabase_client
 
     # Mock the active playback check
     mock_spotify_client.get_current_playback.return_value = Success(
@@ -664,11 +664,11 @@ async def test_clear_played_watchmode_no_active_playback(
     client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test GET /clear-played-watchmode returns no_active_playback when no playback detected."""
-    from src.shell.api import app, get_spotify_client, get_supabase_client
+    from src.shell.api import app, get_song_request_client, get_spotify_client
 
     # Override the dependency
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
-    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+    app.dependency_overrides[get_song_request_client] = lambda: Mock()
 
     # Mock no active playback
     mock_spotify_client.get_current_playback.return_value = Success(None)
@@ -686,11 +686,11 @@ async def test_watchmode_endpoint_state_inconsistency_error_500(
     client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test watchmode endpoint returns 500 for state inconsistency."""
-    from src.shell.api import app, get_spotify_client, get_supabase_client
+    from src.shell.api import app, get_song_request_client, get_spotify_client
 
     # Override dependencies
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
-    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+    app.dependency_overrides[get_song_request_client] = lambda: Mock()
 
     # Mock active playback
     mock_spotify_client.get_current_playback.return_value = Success(
@@ -722,11 +722,11 @@ async def test_watchmode_endpoint_top_level_exception_corrected(
 ) -> None:
     """Test watchmode endpoint top-level exception handling for truly unhandled exceptions (ZEILEN 406-408)."""
 
-    from src.shell.api import app, get_spotify_client, get_supabase_client
+    from src.shell.api import app, get_song_request_client, get_spotify_client
 
     # Override dependencies
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
-    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+    app.dependency_overrides[get_song_request_client] = lambda: Mock()
 
     # Mock active playback SUCCESSFULLY (bypasses Zeilen 268-301)
     mock_spotify_client.get_current_playback.return_value = Success(
@@ -772,11 +772,11 @@ async def test_watchmode_endpoint_already_running_returns_200(
     """Test watchmode endpoint returns 200 when monitoring already running."""
     from datetime import datetime, timedelta
 
-    from src.shell.api import app, get_spotify_client, get_supabase_client
+    from src.shell.api import app, get_song_request_client, get_spotify_client
 
     # Override dependencies
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
-    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+    app.dependency_overrides[get_song_request_client] = lambda: Mock()
 
     # Mock active playback
     mock_spotify_client.get_current_playback.return_value = Success(
@@ -809,11 +809,11 @@ async def test_watchmode_endpoint_playback_check_failure_409(
     client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test watchmode endpoint returns 409 when playback check fails."""
-    from src.shell.api import app, get_spotify_client, get_supabase_client
+    from src.shell.api import app, get_song_request_client, get_spotify_client
 
     # Override dependencies
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
-    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+    app.dependency_overrides[get_song_request_client] = lambda: Mock()
 
     # Mock failed playback check
     mock_spotify_client.get_current_playback.return_value = Failure(
@@ -832,11 +832,11 @@ async def test_watchmode_endpoint_playback_check_exception_500(
     client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test watchmode endpoint returns 500 when playback check throws exception."""
-    from src.shell.api import app, get_spotify_client, get_supabase_client
+    from src.shell.api import app, get_song_request_client, get_spotify_client
 
     # Override dependencies
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
-    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+    app.dependency_overrides[get_song_request_client] = lambda: Mock()
 
     # Mock playback check exception
     mock_spotify_client.get_current_playback.side_effect = Exception("Network timeout")
@@ -852,11 +852,11 @@ async def test_watchmode_endpoint_service_error_500(
     client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test watchmode endpoint returns 500 when service access fails."""
-    from src.shell.api import app, get_spotify_client, get_supabase_client
+    from src.shell.api import app, get_song_request_client, get_spotify_client
 
     # Override dependencies
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
-    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+    app.dependency_overrides[get_song_request_client] = lambda: Mock()
 
     # Mock active playback
     mock_spotify_client.get_current_playback.return_value = Success(
@@ -878,11 +878,11 @@ async def test_watchmode_endpoint_startup_error_500(
     client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test watchmode endpoint returns 500 when startup fails."""
-    from src.shell.api import app, get_spotify_client, get_supabase_client
+    from src.shell.api import app, get_song_request_client, get_spotify_client
 
     # Override dependencies
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
-    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+    app.dependency_overrides[get_song_request_client] = lambda: Mock()
 
     # Mock active playback
     mock_spotify_client.get_current_playback.return_value = Success(
@@ -917,11 +917,11 @@ async def test_watchmode_endpoint_playback_inactive_during_startup_409(
     client: TestClient, mock_spotify_client: Mock
 ) -> None:
     """Test watchmode endpoint returns 409 when playback inactive during startup."""
-    from src.shell.api import app, get_spotify_client, get_supabase_client
+    from src.shell.api import app, get_song_request_client, get_spotify_client
 
     # Override dependencies
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
-    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+    app.dependency_overrides[get_song_request_client] = lambda: Mock()
 
     # Mock active playback for initial check
     mock_spotify_client.get_current_playback.return_value = Success(
@@ -961,11 +961,11 @@ async def test_watchmode_endpoint_state_inconsistency_after_start_corrected(
 ) -> None:
     """Test watchmode endpoint returns 500 for state inconsistency after start (ZEILE 347)."""
 
-    from src.shell.api import app, get_spotify_client, get_supabase_client
+    from src.shell.api import app, get_song_request_client, get_spotify_client
 
     # Override dependencies
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
-    app.dependency_overrides[get_supabase_client] = lambda: Mock()
+    app.dependency_overrides[get_song_request_client] = lambda: Mock()
 
     # Mock active playback
     mock_spotify_client.get_current_playback.return_value = Success(

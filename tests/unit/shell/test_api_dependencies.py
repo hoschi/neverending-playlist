@@ -4,15 +4,15 @@ from src.core.protocols import SpotifyClient, SupabaseClient
 from src.core.services.encryption_service import EncryptionService
 from src.shell.api import (
     get_encryption_service,
+    get_song_request_client,
     get_spotify_client,
     get_spotify_oauth,
-    get_supabase_client,
 )
 
 
-def test_get_supabase_client():
-    """Test that the Supabase client provider returns a valid client."""
-    client = get_supabase_client()
+def test_get_song_request_client():
+    """Test that the song-request client provider returns a valid client."""
+    client = get_song_request_client()
     assert isinstance(client, SupabaseClient)
 
 

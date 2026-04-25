@@ -11,7 +11,7 @@ from src.core.models import (
     SongRequest,
 )
 from src.core.protocols import SpotifyClient, SupabaseClient
-from src.shell.api import app, get_spotify_client, get_supabase_client
+from src.shell.api import app, get_song_request_client, get_spotify_client
 
 pytestmark = pytest.mark.anyio
 
@@ -57,7 +57,7 @@ async def test_sync_playlist_success(
         ]
     )
 
-    app.dependency_overrides[get_supabase_client] = lambda: mock_supabase_client
+    app.dependency_overrides[get_song_request_client] = lambda: mock_supabase_client
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
 
     # Act
@@ -148,7 +148,7 @@ async def test_clear_played_success_with_autofill_200(
     )
 
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
-    app.dependency_overrides[get_supabase_client] = lambda: mock_supabase_client
+    app.dependency_overrides[get_song_request_client] = lambda: mock_supabase_client
 
     # Act
     async with AsyncClient(
@@ -268,7 +268,7 @@ async def test_clear_played_partially_successful_207(
 
     # Override dependencies
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
-    app.dependency_overrides[get_supabase_client] = lambda: mock_supabase_client
+    app.dependency_overrides[get_song_request_client] = lambda: mock_supabase_client
 
     # Act
     async with AsyncClient(
@@ -399,7 +399,7 @@ async def test_sync_playlist_failure(
         Exception("Supabase ded")
     )
 
-    app.dependency_overrides[get_supabase_client] = lambda: mock_supabase_client
+    app.dependency_overrides[get_song_request_client] = lambda: mock_supabase_client
     app.dependency_overrides[get_spotify_client] = lambda: mock_spotify_client
 
     # Act

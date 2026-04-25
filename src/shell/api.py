@@ -8,6 +8,7 @@ import ssl
 import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from types import FrameType
 from typing import Annotated
 
 import spotipy  # type: ignore
@@ -42,7 +43,7 @@ from src.shell.neverending_scheduler import NeverendingScheduler
 from src.shell.watch_service import watch_service
 
 
-def get_supabase_client() -> SupabaseClient:
+def get_song_request_client() -> SupabaseClient:
     """FastAPI dependency provider for the configured song request backend."""
     settings = get_settings()
     if settings.song_source == "SQLITE":
@@ -168,7 +169,7 @@ def callback(
 
 @app.post("/sync-playlist")
 async def sync_playlist_endpoint(
-    song_request_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
+    song_request_client: Annotated[SupabaseClient, Depends(get_song_request_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
     max_count: int = Query(10, gt=0, le=50),
 ) -> Response:
@@ -206,7 +207,7 @@ async def sync_playlist_endpoint(
 
 @app.post("/clear-played")
 async def clear_played_endpoint(
-    song_request_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
+    song_request_client: Annotated[SupabaseClient, Depends(get_song_request_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
 ) -> Response:
     """API endpoint to clear played tracks from the configured playlist."""
@@ -287,7 +288,7 @@ async def clear_played_endpoint(
 
 @app.get("/clear-played-watchmode")
 async def clear_played_watchmode_endpoint(
-    song_request_client: Annotated[SupabaseClient, Depends(get_supabase_client)],
+    song_request_client: Annotated[SupabaseClient, Depends(get_song_request_client)],
     spotify_client: Annotated[SpotifyClient, Depends(get_spotify_client)],
 ) -> JSONResponse:
     """API endpoint to activate watchmode for automatic playlist clearing."""
@@ -465,7 +466,7 @@ def main() -> None:  # pragma: no cover
     server = uvicorn.Server(config)
 
     # Setup signal handlers for graceful shutdown
-    def handle_signal(signum: int, frame) -> None:  # noqa: ARG001
+    def handle_signal(signum: int, frame: FrameType | None) -> None:  # noqa: ARG001
         logger.info(f"Received signal {signum}, shutting down gracefully...")
         server.should_exit = True
 
