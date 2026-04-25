@@ -88,6 +88,24 @@ def test_resolve_source_window_uses_explicit_datetime_params() -> None:
     assert end_iso == "2026-04-21T22:00:00.000+02:00"
 
 
+def test_resolve_source_window_rejects_mixed_hhmm_and_datetime_formats() -> None:
+    # Arrange
+    source_url = (
+        "https://iris-bob.loverad.io/search.json?station=110&"
+        "start=07:00&"
+        "end=2026-04-21T22%3A00%3A00.000%2B02%3A00"
+    )
+
+    # Act & Assert
+    with pytest.raises(ValueError, match="Mixed start/end formats are not supported"):
+        resolve_source_window(
+            rest_url=source_url,
+            fallback_start_iso="fallback-start",
+            fallback_end_iso="fallback-end",
+            now_local=None,
+        )
+
+
 def test_resolve_source_window_falls_back_when_params_missing() -> None:
     # Arrange
     source_url = "https://iris-bob.loverad.io/search.json?station=110"

@@ -73,7 +73,16 @@ def resolve_source_window(
     start_param = query_values.get("start")
     end_param = query_values.get("end")
     if start_param and end_param:
-        if _is_hhmm(start_param) and _is_hhmm(end_param):
+        start_is_hhmm = _is_hhmm(start_param)
+        end_is_hhmm = _is_hhmm(end_param)
+
+        if start_is_hhmm != end_is_hhmm:
+            raise ValueError(
+                "Mixed start/end formats are not supported: use either HH:MM for both "
+                "or full timestamps for both"
+            )
+
+        if start_is_hhmm and end_is_hhmm:
             return build_yesterday_local_window_from_time(
                 start_param,
                 end_param,
