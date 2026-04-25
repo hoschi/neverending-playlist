@@ -243,6 +243,10 @@ nbstripout --install
 3. `SONG_SOURCE` defaults to `SQLITE`; set it to `SUPABASE` only if you want Supabase as playlist sync source.
 4. Configure `SQLITE_MAX_SIZE_GB` (e.g. `10` for 10 GB); the app converts this internally to bytes.
 5. Configure your source URLs in `SONG_SOURCE_REST_URLS` as a JSON list (multiple sources supported).
+   Example with two sources:
+   ```bash
+   SONG_SOURCE_REST_URLS='["https://iris-bob.loverad.io/search.json?station=110&start=07:00&end=22:00", "https://example.com/source.json?station=42&start=07:00&end=22:00"]'
+   ```
 6. For each source URL, set `start`/`end` either as full timestamps or as `HH:MM` (e.g. `07:00`/`22:00`); `HH:MM` is resolved to yesterday's date automatically.
 7. **Optional**: Configure playlist autofill with `PLAYLIST_AUTOFILL_COUNT=25` to maintain a minimum track count.
 8. **Optional**: Configure watch service timeout with `WATCH_SERVICE_TIMEOUT_MINUTES=15` (default: 10).
@@ -257,6 +261,7 @@ nbstripout --install
 - Persistence tables in SQLite:
   - `song_requests` for imported records
   - `neverending_songs_runs` for run history (`SUCCESS`, `FAILED`, `SKIPPED_MAX_DB_SIZE`)
+- `SQLITE_MAX_SIZE_GB` is a soft guard: when exceeded, the import is skipped but a small `SKIPPED_MAX_DB_SIZE` audit row is still written to `neverending_songs_runs`.
 
 **Scheduler behavior:**
 

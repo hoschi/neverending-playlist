@@ -1,8 +1,12 @@
+import os
 from functools import lru_cache
 from typing import ClassVar, Literal
 
-from pydantic import AliasChoices, Field, field_validator, model_validator
+from loguru import logger
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BYTES_PER_GB = 1024 * 1024 * 1024
 
 
 class Settings(BaseSettings):
@@ -21,10 +25,7 @@ class Settings(BaseSettings):
 
     # SQLite backend
     sqlite_db_path: str = "neverending_songs.db"
-    sqlite_max_size_gb: int = Field(
-        default=10,
-        validation_alias=AliasChoices("SQLITE_MAX_SIZE_GB", "SQLITE_MAX_SIZE_BYTES"),
-    )
+    sqlite_max_size_gb: int = 10
 
     # Source URLs for NeverendingSongs import (must be provided via env)
     song_source_rest_urls: list[str]
@@ -60,7 +61,39 @@ class Settings(BaseSettings):
     @property
     def sqlite_max_size_bytes(self) -> int:
         """Returns the configured SQLite max size in bytes for consumers."""
-        return self.sqlite_max_size_gb * 1024 * 1024 * 1024
+        return self.sqlite_max_size_gb * BYTES_PER_GB
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_sqlite_max_size_bytes(cls, data: object) -> object:
+        """Converts deprecated SQLITE_MAX_SIZE_BYTES env var into sqlite_max_size_gb."""
+        if not isinstance(data, dict):
+            return data
+
+        if "sqlite_max_size_gb" in data or "SQLITE_MAX_SIZE_GB" in os.environ:
+            return data
+
+        legacy_bytes_value = os.environ.get("SQLITE_MAX_SIZE_BYTES")
+        if legacy_bytes_value is None:
+            return data
+
+        try:
+            legacy_bytes = int(legacy_bytes_value)
+        except ValueError as error:
+            raise ValueError("SQLITE_MAX_SIZE_BYTES must be an integer number of bytes") from error
+
+        if legacy_bytes <= 0:
+            raise ValueError("SQLITE_MAX_SIZE_BYTES must be greater than 0")
+
+        size_gb = max(1, (legacy_bytes + BYTES_PER_GB - 1) // BYTES_PER_GB)
+        logger.warning(
+            "SQLITE_MAX_SIZE_BYTES is deprecated; use SQLITE_MAX_SIZE_GB instead. "
+            "Converted {bytes} bytes to {gb} GB.",
+            bytes=legacy_bytes,
+            gb=size_gb,
+        )
+        data["sqlite_max_size_gb"] = size_gb
+        return data
 
     @field_validator("sqlite_max_size_gb", mode="before")
     @classmethod
