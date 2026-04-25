@@ -49,7 +49,12 @@ def build_yesterday_local_window_from_time(
     start_clock = _parse_hhmm(start_time_hhmm)
     end_clock = _parse_hhmm(end_time_hhmm)
 
-    reference_local = (now_local or datetime.now().astimezone()).astimezone()
+    if now_local is None:
+        reference_local = datetime.now().astimezone()
+    elif now_local.tzinfo is None:
+        reference_local = now_local.astimezone()
+    else:
+        reference_local = now_local
     yesterday = (reference_local - timedelta(days=1)).date()
 
     start_dt = datetime.combine(yesterday, start_clock, tzinfo=reference_local.tzinfo)
