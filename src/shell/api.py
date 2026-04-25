@@ -3,6 +3,7 @@
 This module contains all API endpoints and the FastAPI application configuration.
 """
 
+import asyncio
 import signal
 import ssl
 import sys
@@ -86,12 +87,14 @@ async def lifespan(_: object) -> AsyncGenerator[None, None]:  # pragma: no cover
     scheduler = NeverendingScheduler(settings)
     await scheduler.start()
 
-    yield
-
-    # Shutdown lifecycle
-    await scheduler.stop()
-    logger.info("FastAPI application shutting down...")
-    logger.info("FastAPI application shutdown complete")
+    try:
+        yield
+    except asyncio.CancelledError:
+        logger.info("FastAPI lifespan cancelled during shutdown")
+    finally:
+        await scheduler.stop()
+        logger.info("FastAPI application shutting down...")
+        logger.info("FastAPI application shutdown complete")
 
 
 app: FastAPI = FastAPI(lifespan=lifespan)
