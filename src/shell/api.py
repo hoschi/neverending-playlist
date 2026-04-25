@@ -4,12 +4,10 @@ This module contains all API endpoints and the FastAPI application configuration
 """
 
 import asyncio
-import signal
 import ssl
 import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from types import FrameType
 from typing import Annotated
 
 import spotipy  # type: ignore
@@ -448,7 +446,7 @@ async def clear_played_watchmode_endpoint(
 
 
 def main() -> None:  # pragma: no cover
-    """Main function to run the FastAPI application with signal handling."""
+    """Main function to run the FastAPI application."""
     settings = get_settings()
 
     # Create SSL context
@@ -467,15 +465,6 @@ def main() -> None:  # pragma: no cover
     )
 
     server = uvicorn.Server(config)
-
-    # Setup signal handlers for graceful shutdown
-    def handle_signal(signum: int, frame: FrameType | None) -> None:  # noqa: ARG001
-        logger.info(f"Received signal {signum}, shutting down gracefully...")
-        server.should_exit = True
-
-    # Register signal handlers
-    signal.signal(signal.SIGINT, handle_signal)
-    signal.signal(signal.SIGTERM, handle_signal)
 
     try:
         logger.info("Starting server...")
