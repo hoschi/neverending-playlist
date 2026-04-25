@@ -46,12 +46,27 @@ def run_neverending_songs_import(
 
     size_guard_result = _guard_sqlite_file_size(sqlite_db_path, sqlite_max_size_bytes)
     if not is_successful(size_guard_result):
+        details = str(size_guard_result.failure())
+        try:
+            _write_import_run(
+                sqlite_db_path=sqlite_db_path,
+                status=NeverendingSongsImportStatus.SKIPPED_MAX_DB_SIZE,
+                imported_count=0,
+                source_count=len(source_urls),
+                details=details,
+            )
+        except Exception as run_write_error:
+            logger.warning(
+                "Failed to persist SKIPPED_MAX_DB_SIZE import run: {error}",
+                error=run_write_error,
+            )
+
         return Success(
             NeverendingSongsImportRun(
                 status=NeverendingSongsImportStatus.SKIPPED_MAX_DB_SIZE,
                 imported_count=0,
                 source_count=len(source_urls),
-                details=str(size_guard_result.failure()),
+                details=details,
             )
         )
 
