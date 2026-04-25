@@ -241,7 +241,7 @@ nbstripout --install
 1. Copy `.env.example` to `.env`.
 2. Enter your Supabase and Spotify API credentials in the `.env` file.
 3. `SONG_SOURCE` defaults to `SQLITE`; set it to `SUPABASE` only if you want Supabase as playlist sync source.
-4. Configure `SQLITE_MAX_SIZE_BYTES` in GB (e.g. `10` for 10 GB); the app converts this internally to bytes.
+4. Configure `SQLITE_MAX_SIZE_GB` (e.g. `10` for 10 GB); the app converts this internally to bytes.
 5. Configure your source URLs in `SONG_SOURCE_REST_URLS` as a JSON list (multiple sources supported).
 6. For each source URL, set `start`/`end` either as full timestamps or as `HH:MM` (e.g. `07:00`/`22:00`); `HH:MM` is resolved to yesterday's date automatically.
 7. **Optional**: Configure playlist autofill with `PLAYLIST_AUTOFILL_COUNT=25` to maintain a minimum track count.

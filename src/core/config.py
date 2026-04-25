@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import ClassVar, Literal
 
-from pydantic import field_validator, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,7 +21,10 @@ class Settings(BaseSettings):
 
     # SQLite backend
     sqlite_db_path: str = "neverending_songs.db"
-    sqlite_max_size_bytes: int = 10 * 1024 * 1024 * 1024
+    sqlite_max_size_gb: int = Field(
+        default=10,
+        validation_alias=AliasChoices("SQLITE_MAX_SIZE_GB", "SQLITE_MAX_SIZE_BYTES"),
+    )
 
     # Source URLs for NeverendingSongs import (must be provided via env)
     song_source_rest_urls: list[str]
@@ -54,14 +57,19 @@ class Settings(BaseSettings):
     ssl_cert_path: str = "ssl/cert.pem"
     ssl_key_path: str = "ssl/key.pem"
 
-    @field_validator("sqlite_max_size_bytes", mode="before")
+    @property
+    def sqlite_max_size_bytes(self) -> int:
+        """Returns the configured SQLite max size in bytes for consumers."""
+        return self.sqlite_max_size_gb * 1024 * 1024 * 1024
+
+    @field_validator("sqlite_max_size_gb", mode="before")
     @classmethod
-    def _convert_sqlite_max_size_gb_to_bytes(cls, value: int | str) -> int:
-        """Parses SQLITE_MAX_SIZE_BYTES as GB and converts to bytes."""
+    def _validate_sqlite_max_size_gb(cls, value: int | str) -> int:
+        """Parses SQLite max size from GB input and validates positivity."""
         size_gb = int(value)
         if size_gb <= 0:
-            raise ValueError("SQLITE_MAX_SIZE_BYTES must be greater than 0 GB")
-        return size_gb * 1024 * 1024 * 1024
+            raise ValueError("SQLITE_MAX_SIZE_GB must be greater than 0")
+        return size_gb
 
     @model_validator(mode="after")
     def _validate_song_source_requirements(self) -> "Settings":

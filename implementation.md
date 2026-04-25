@@ -52,7 +52,7 @@ flowchart LR
 
 - Implementiert in `src/shell/neverending_songs.py`.
 - Ablauf:
-  - SQLite-Dateigröße prüfen (`SQLITE_MAX_SIZE_BYTES`, in GB konfiguriert und intern in Bytes umgerechnet).
+  - SQLite-Dateigröße prüfen (`SQLITE_MAX_SIZE_GB`, intern in Bytes umgerechnet).
   - Für jede URL in `SONG_SOURCE_REST_URLS` Daten laden.
   - Wenn `start`/`end` als `HH:MM` gesetzt sind, werden sie automatisch auf das gestrige Datum aufgelöst.
   - jq-Mapping anwenden und Records validieren.
