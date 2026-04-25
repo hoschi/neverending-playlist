@@ -73,7 +73,7 @@ flowchart TD
 ## Playlist-Quelle (Phase 3)
 
 - `SONG_SOURCE` steuert den Backend-Adapter für Song-Requests (`SUPABASE` oder `SQLITE`).
-- Die FastAPI-Dependency `get_supabase_client()` wählt dynamisch zwischen `ConcreteSupabaseClient` und `ConcreteSqliteClient`.
+- Die FastAPI-Dependency `get_song_request_client()` wählt dynamisch zwischen `ConcreteSupabaseClient` und `ConcreteSqliteClient`.
 - `/sync-playlist`, `/clear-played` und der Watchmode nutzen damit dieselbe konfigurierbare Song-Request-Quelle.
 
 ## Scheduler (Phase 4)

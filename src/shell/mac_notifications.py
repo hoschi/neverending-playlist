@@ -1,4 +1,5 @@
 import json
+import shutil
 import subprocess
 from datetime import UTC, datetime
 
@@ -21,15 +22,24 @@ def _send_macos_notification(title: str, message: str) -> None:
     script = (
         f"display notification {json.dumps(message)} with title {json.dumps(title)}"
     )
+    executable = shutil.which("osascript")
+    if executable is None:
+        logger.warning("osascript is not available on this system")
+        return
+
     try:
         process = subprocess.run(
-            ["osascript", "-e", script],
+            [executable, "-e", script],
             capture_output=True,
             text=True,
             check=False,
+            timeout=5,
         )
     except FileNotFoundError:
         logger.warning("osascript is not available on this system")
+        return
+    except subprocess.TimeoutExpired:
+        logger.warning("Timed out while sending macOS notification")
         return
 
     if process.returncode != 0:
