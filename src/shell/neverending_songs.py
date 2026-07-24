@@ -3,9 +3,11 @@ import os
 import shutil
 import sqlite3
 import subprocess
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import cast
 from urllib.error import HTTPError, URLError
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import urlopen
 
 from loguru import logger
@@ -33,6 +35,19 @@ JQ_MAPPING_EXPRESSION = (
     ".result.entry[] | {artist: .song.entry[0].artist.entry[0].name, "
     "song: .song.entry[0].title, airtime: .airtime, source: $source}"
 )
+PAYLOAD_PREVIEW_CHARS = 500
+SUMMARY_ITEM_LIMIT = 8
+SENSITIVE_QUERY_MARKERS = ("key", "token", "secret", "password", "auth")
+
+
+@dataclass(frozen=True)
+class FetchedPayload:
+    """Payload plus small response metadata for import diagnostics."""
+
+    text: str
+    status_code: int | None
+    content_type: str | None
+    byte_count: int
 
 
 def run_neverending_songs_import(
@@ -95,8 +110,49 @@ def run_neverending_songs_import(
             resolved_windows.append(
                 f"{source_name}:{source_start_iso}->{source_end_iso}"
             )
-            payload = _fetch_payload(resolved_url)
-            mapped_records.extend(_map_payload_with_jq(payload, source_name))
+            safe_resolved_url = _safe_url_for_logging(resolved_url)
+            logger.info(
+                "NeverendingSongs source fetch started: "
+                "source={source}, start={start}, end={end}, url={url}",
+                source=source_name,
+                start=source_start_iso,
+                end=source_end_iso,
+                url=safe_resolved_url,
+            )
+
+            try:
+                payload = _fetch_payload(resolved_url)
+                logger.info(
+                    "NeverendingSongs source fetch finished: "
+                    "source={source}, http_status={status}, content_type={content_type}, "
+                    "bytes={bytes}, payload={payload_summary}",
+                    source=source_name,
+                    status=payload.status_code,
+                    content_type=payload.content_type,
+                    bytes=payload.byte_count,
+                    payload_summary=_summarize_payload_for_log(payload.text),
+                )
+                source_records = _map_payload_with_jq(
+                    payload.text,
+                    source_name,
+                    source_start_iso,
+                    source_end_iso,
+                    safe_resolved_url,
+                )
+            except Exception as source_error:
+                raise RuntimeError(
+                    "source import failed: "
+                    f"source={source_name}, start={source_start_iso}, "
+                    f"end={source_end_iso}, url={safe_resolved_url}, "
+                    f"error={source_error}"
+                ) from source_error
+
+            logger.info(
+                "NeverendingSongs source mapped: source={source}, records={records}",
+                source=source_name,
+                records=len(source_records),
+            )
+            mapped_records.extend(source_records)
 
         imported_count = _write_records_to_sqlite(sqlite_db_path, mapped_records)
         run_details = ";".join(resolved_windows)
@@ -123,7 +179,7 @@ def run_neverending_songs_import(
             )
         )
     except Exception as error:
-        logger.error("NeverendingSongs import failed: {error}", error=error)
+        logger.exception("NeverendingSongs import failed: {error}", error=error)
         try:
             _write_import_run(
                 sqlite_db_path=sqlite_db_path,
@@ -166,19 +222,36 @@ def _resolve_source_url(source_url: str, start_iso: str, end_iso: str) -> str:
     return build_source_url_with_window(source_url, start_iso, end_iso)
 
 
-def _fetch_payload(url: str) -> str:
+def _fetch_payload(url: str) -> FetchedPayload:
     try:
         with urlopen(url, timeout=30) as response:  # noqa: S310
             data = response.read()
-        return cast(bytes, data).decode("utf-8")
+            headers = response.headers
+            status_code = cast(int | None, getattr(response, "status", None))
+            content_type = headers.get("Content-Type")
+        payload_bytes = cast(bytes, data)
+        return FetchedPayload(
+            text=payload_bytes.decode("utf-8"),
+            status_code=status_code,
+            content_type=content_type,
+            byte_count=len(payload_bytes),
+        )
     except HTTPError as error:
-        raise RuntimeError(f"HTTP error for source {url}: {error.code}") from error
+        safe_url = _safe_url_for_logging(url)
+        raise RuntimeError(f"HTTP error for source {safe_url}: {error.code}") from error
     except URLError as error:
-        raise RuntimeError(f"URL error for source {url}: {error.reason}") from error
+        safe_url = _safe_url_for_logging(url)
+        raise RuntimeError(
+            f"URL error for source {safe_url}: {error.reason}"
+        ) from error
 
 
 def _map_payload_with_jq(
-    payload: str, source_name: str
+    payload: str,
+    source_name: str,
+    start_iso: str,
+    end_iso: str,
+    safe_url: str,
 ) -> list[NeverendingSongsMappedRecord]:
     jq_executable = _ensure_jq_available()
 
@@ -199,7 +272,24 @@ def _map_payload_with_jq(
 
     if process.returncode != 0:
         stderr = process.stderr.strip() or "unknown jq error"
-        raise RuntimeError(f"jq mapping failed: {stderr}")
+        payload_summary = _summarize_payload_for_log(payload)
+        logger.error(
+            "NeverendingSongs jq mapping failed: "
+            "source={source}, start={start}, end={end}, url={url}, "
+            "returncode={returncode}, stderr={stderr}, payload={payload_summary}",
+            source=source_name,
+            start=start_iso,
+            end=end_iso,
+            url=safe_url,
+            returncode=process.returncode,
+            stderr=stderr,
+            payload_summary=payload_summary,
+        )
+        raise RuntimeError(
+            "jq mapping failed: "
+            f"source={source_name}, start={start_iso}, end={end_iso}, "
+            f"url={safe_url}, payload={payload_summary}, stderr={stderr}"
+        )
 
     records: list[NeverendingSongsMappedRecord] = []
     lines = [line for line in process.stdout.splitlines() if line.strip()]
@@ -208,6 +298,88 @@ def _map_payload_with_jq(
         records.append(NeverendingSongsMappedRecord.model_validate(row))
 
     return records
+
+
+def _safe_url_for_logging(url: str) -> str:
+    parsed = urlsplit(url)
+    query_items = []
+    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
+        redacted_value = (
+            "***"
+            if any(marker in key.lower() for marker in SENSITIVE_QUERY_MARKERS)
+            else value
+        )
+        query_items.append((key, redacted_value))
+    return urlunsplit(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            urlencode(query_items),
+            "",
+        )
+    )
+
+
+def _summarize_payload_for_log(payload: str) -> str:
+    try:
+        decoded: object = json.loads(payload)
+    except json.JSONDecodeError:
+        return (
+            f"text chars={len(payload)}, "
+            f"bytes={len(payload.encode('utf-8'))}, "
+            f"preview={_payload_preview(payload)}"
+        )
+
+    return _summarize_json_for_log(decoded)
+
+
+def _summarize_json_for_log(value: object) -> str:
+    if isinstance(value, dict):
+        keys = [str(key) for key in value]
+        parts = [f"json.object keys={_format_list_preview(keys)}"]
+        if "result" in value:
+            parts.append(f"result={_summarize_json_node(value['result'])}")
+        return ", ".join(parts)
+
+    return f"json.{_summarize_json_node(value)}"
+
+
+def _summarize_json_node(value: object) -> str:
+    if isinstance(value, dict):
+        keys = [str(key) for key in value]
+        entry_summary = ""
+        if "entry" in value:
+            entry_summary = f", entry={_summarize_json_node(value['entry'])}"
+        return f"object keys={_format_list_preview(keys)}{entry_summary}"
+    if isinstance(value, list):
+        if not value:
+            return "array len=0"
+        return f"array len={len(value)}, first={_summarize_json_node(value[0])}"
+    if value is None:
+        return "null"
+    if isinstance(value, str):
+        return f"string len={len(value)}"
+    if isinstance(value, bool):
+        return f"boolean value={value}"
+    if isinstance(value, int | float):
+        return f"number value={value}"
+    return type(value).__name__
+
+
+def _format_list_preview(values: list[str]) -> str:
+    visible_values = values[:SUMMARY_ITEM_LIMIT]
+    suffix = (
+        ""
+        if len(values) <= SUMMARY_ITEM_LIMIT
+        else f", ... +{len(values) - SUMMARY_ITEM_LIMIT}"
+    )
+    return "[" + ", ".join(visible_values) + suffix + "]"
+
+
+def _payload_preview(payload: str) -> str:
+    normalized = " ".join(payload.split())
+    return repr(normalized[:PAYLOAD_PREVIEW_CHARS])
 
 
 def _ensure_jq_available() -> str:

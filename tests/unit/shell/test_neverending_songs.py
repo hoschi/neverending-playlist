@@ -1,4 +1,5 @@
 import sqlite3
+import subprocess
 from unittest.mock import patch
 
 from returns.pipeline import is_successful
@@ -7,6 +8,9 @@ from src.core.models import NeverendingSongsImportStatus
 from src.core.sqlite_schema import IMPORT_RUNS_TABLE, SQLITE_SCHEMA_STATEMENTS
 from src.shell.neverending_songs import (
     _ensure_jq_available,
+    _map_payload_with_jq,
+    _safe_url_for_logging,
+    _summarize_payload_for_log,
     run_neverending_songs_import,
 )
 
@@ -64,3 +68,54 @@ def test_ensure_jq_available_raises_clear_error_when_binary_missing() -> None:
             assert "apt install jq" in message
         else:
             raise AssertionError("Expected RuntimeError when jq is unavailable")
+
+
+def test_payload_summary_exposes_null_result_shape() -> None:
+    summary = _summarize_payload_for_log('{"result": null}')
+
+    assert "json.object keys=[result]" in summary
+    assert "result=null" in summary
+
+
+def test_safe_url_for_logging_redacts_sensitive_query_values() -> None:
+    safe_url = _safe_url_for_logging(
+        "https://example.com/source?station=110&api_key=secret&token=abc"
+    )
+
+    assert "station=110" in safe_url
+    assert "api_key=%2A%2A%2A" in safe_url
+    assert "token=%2A%2A%2A" in safe_url
+    assert "secret" not in safe_url
+    assert "abc" not in safe_url
+
+
+def test_jq_mapping_error_includes_source_context_and_payload_shape() -> None:
+    failed_process = subprocess.CompletedProcess(
+        args=["jq"],
+        returncode=5,
+        stdout="",
+        stderr="jq: error (at <stdin>:2): Cannot iterate over null (null)",
+    )
+
+    with (
+        patch("src.shell.neverending_songs._ensure_jq_available", return_value="jq"),
+        patch(
+            "src.shell.neverending_songs.subprocess.run", return_value=failed_process
+        ),
+    ):
+        try:
+            _map_payload_with_jq(
+                '{"result": null}',
+                "example.com",
+                "2026-06-06T22:40:00+00:00",
+                "2026-06-06T23:00:00+00:00",
+                "https://example.com/source?api_key=***",
+            )
+        except RuntimeError as error:
+            message = str(error)
+            assert "source=example.com" in message
+            assert "result=null" in message
+            assert "Cannot iterate over null" in message
+            assert "api_key=***" in message
+        else:
+            raise AssertionError("Expected RuntimeError when jq mapping fails")

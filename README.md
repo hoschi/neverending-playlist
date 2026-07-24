@@ -245,7 +245,7 @@ nbstripout --install
 5. Configure your source URLs in `SONG_SOURCE_REST_URLS` as a JSON list (multiple sources supported).
    Example with two sources:
    ```bash
-   SONG_SOURCE_REST_URLS='["https://iris-bob.loverad.io/search.json?station=110&start=07:00&end=22:00", "https://example.com/source.json?station=42&start=07:00&end=22:00"]'
+   SONG_SOURCE_REST_URLS='["https://your-music-source/search.json?&start=07:00&end=22:00", "https://example.com/source.json?start=07:00&end=22:00"]'
    ```
 6. For each source URL, set `start`/`end` either as full timestamps or as `HH:MM` (e.g. `07:00`/`22:00`); `HH:MM` is resolved to yesterday's date automatically.
 7. **Optional**: Configure playlist autofill with `PLAYLIST_AUTOFILL_COUNT=25` to maintain a minimum track count.
