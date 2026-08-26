@@ -9,7 +9,7 @@ This project provides a web service to synchronize song requests from a configur
 - **Configurable**: All external service credentials and settings are managed via a `.env` file.
 - **Configurable Watch Service**: The watch service that automatically clears played tracks can be configured with custom timeout intervals using the `WATCH_SERVICE_TIMEOUT_MINUTES` environment variable (default: 10 minutes).
 - **NeverendingSongs Import Pipeline**: Integrated REST import (`SONG_SOURCE_REST_URLS`) stores mapped records in SQLite (`song_requests`) and writes run history to `neverending_songs_runs`.
-- **Built-in Scheduler with Catch-up**: A FastAPI lifespan background task checks hourly and runs the daily import at/after 02:00 local time, including reboot-safe catch-up based on persisted successful runs.
+- **Built-in Scheduler**: A FastAPI lifespan background task sleeps until 02:00 local time and runs the daily import once. If that hour already had a successful run, it waits until the next night.
 - **Optional macOS Error Notifications**: When `ENABLE_MAC_NOTIFICATIONS=true`, scheduler and unhandled server errors can trigger local notifications via `osascript`.
 - **Robust & Testable**: Built with a "Functional Core, Imperative Shell" architecture, ensuring the business logic is isolated and easily testable. It uses the `returns` library for explicit, railway-oriented error handling.
 
@@ -265,10 +265,9 @@ nbstripout --install
 
 **Scheduler behavior:**
 
-- Hourly checks at full hour boundaries.
-- Daily run is eligible from 02:00 local time onward.
-- If no successful run exists for today, a catch-up import is triggered.
-- If `DEBUG_SYNC_AT_STARTUP=true`, one immediate startup import is triggered before the hourly scheduler loop starts.
+- Sleeps until 02:00 local time, then runs the import.
+- Does not retry hourly if the 02:00 run failed; the next attempt is the following night.
+- If `DEBUG_SYNC_AT_STARTUP=true`, one immediate startup import is triggered before the 02:00 scheduler loop starts.
 
 **Quick check (latest imported songs):**
 

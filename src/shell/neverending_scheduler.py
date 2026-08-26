@@ -9,7 +9,7 @@ from returns.pipeline import is_successful
 from src.core.config import Settings
 from src.core.models import NeverendingSongsImportStatus
 from src.core.services.neverending_scheduler_service import (
-    seconds_until_next_hour,
+    seconds_until_scheduled_hour,
     should_run_daily_import,
 )
 from src.core.sqlite_schema import IMPORT_RUNS_TABLE, SQLITE_SCHEMA_STATEMENTS
@@ -18,7 +18,7 @@ from src.shell.neverending_songs import run_neverending_songs_import
 
 
 class NeverendingScheduler:
-    """Hourly scheduler with daily 02:00 run and catch-up behavior."""
+    """Daily scheduler that runs the import at 02:00 local time."""
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -118,7 +118,7 @@ class NeverendingScheduler:
         try:
             while not self._shutdown_event.is_set():
                 now_local = datetime.now().astimezone()
-                wait_seconds = seconds_until_next_hour(now_local)
+                wait_seconds = seconds_until_scheduled_hour(now_local, scheduled_hour=2)
                 try:
                     await asyncio.wait_for(
                         self._shutdown_event.wait(), timeout=wait_seconds

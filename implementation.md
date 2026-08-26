@@ -80,17 +80,16 @@ flowchart TD
 
 - Implementiert in `src/shell/neverending_scheduler.py`, gestartet/gestoppt im FastAPI-Lifespan (`src/shell/api.py`).
 - Logik:
-  - Stündlicher Check (zur vollen Stunde).
-  - Tageslauf darf ab 02:00 Lokalzeit ausgeführt werden.
-  - Catch-up: Wenn letzter erfolgreicher Lauf nicht vom heutigen Tag ist, wird beim nächsten stündlichen Check importiert.
+  - Wartet bis 02:00 Lokalzeit, dann ein Importlauf.
+  - Kein stündliches Catch-up: schlägt der 02:00-Lauf fehl, ist der nächste Versuch die folgende Nacht.
   - Debug-Override: Bei `DEBUG_SYNC_AT_STARTUP=true` wird beim App-Start einmalig sofort ein Importlauf ausgelöst.
 - Persistenz:
   - Letzter erfolgreicher Lauf wird aus `neverending_songs_runs` (Status `SUCCESS`) gelesen.
-  - Dadurch ist Catch-up reboot-sicher.
+  - In der 02:00-Stunde wird nicht erneut importiert, wenn heute bereits ein SUCCESS vorliegt.
 
 ```mermaid
 flowchart TD
-    A[Hourly tick] --> B{Local hour >= 2?}
+    A[Wait until 02:00] --> B{Local hour == 2?}
     B -- no --> C[Skip]
     B -- yes --> D[Read last SUCCESS run]
     D --> E{Run date < today?}
@@ -116,7 +115,7 @@ flowchart TD
 - `README.md` ist auf den aktuellen Stand gebracht:
   - konfigurierbare Song-Request-Quelle (`SUPABASE`/`SQLITE`),
   - integrierter NeverendingSongs-Import,
-  - Scheduler-Verhalten (02:00 + Catch-up),
+  - Scheduler-Verhalten (02:00, ohne stündliches Catch-up),
   - optionale macOS-Fehlerbenachrichtigungen.
 - `.env.example` beschreibt:
   - `SONG_SOURCE_REST_URLS` mit optionalen `HH:MM`-Zeitfenstern (werden auf gestern aufgelöst),

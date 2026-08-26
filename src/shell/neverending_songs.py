@@ -253,6 +253,17 @@ def _map_payload_with_jq(
     end_iso: str,
     safe_url: str,
 ) -> list[NeverendingSongsMappedRecord]:
+    missing_entry_reason = _missing_result_entry_reason(payload)
+    if missing_entry_reason is not None:
+        payload_summary = _summarize_payload_for_log(payload)
+        message = (
+            "source returned no entries: "
+            f"source={source_name}, start={start_iso}, end={end_iso}, "
+            f"url={safe_url}, {missing_entry_reason}, payload={payload_summary}"
+        )
+        logger.error("NeverendingSongs {message}", message=message)
+        raise RuntimeError(message)
+
     jq_executable = _ensure_jq_available()
 
     process = subprocess.run(
@@ -298,6 +309,25 @@ def _map_payload_with_jq(
         records.append(NeverendingSongsMappedRecord.model_validate(row))
 
     return records
+
+
+def _missing_result_entry_reason(payload: str) -> str | None:
+    try:
+        decoded: object = json.loads(payload)
+    except json.JSONDecodeError:
+        return None
+
+    if not isinstance(decoded, dict):
+        return None
+
+    result = decoded.get("result")
+    if not isinstance(result, dict):
+        return None
+
+    if result.get("entry") is not None:
+        return None
+
+    return f"result.entry is missing, found={result.get('found')}"
 
 
 def _safe_url_for_logging(url: str) -> str:

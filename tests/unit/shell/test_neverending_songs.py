@@ -89,6 +89,28 @@ def test_safe_url_for_logging_redacts_sensitive_query_values() -> None:
     assert "abc" not in safe_url
 
 
+def test_map_payload_without_entry_raises_clear_error() -> None:
+    payload = '{\n                    "result": {\n                    "found": "0"}}'
+
+    try:
+        _map_payload_with_jq(
+            payload,
+            "iris-bob.loverad.io",
+            "2026-08-25T07:00:00.000+02:00",
+            "2026-08-25T22:00:00.000+02:00",
+            "https://iris-bob.loverad.io/search.json",
+        )
+    except RuntimeError as error:
+        message = str(error)
+        assert "no entries" in message
+        assert "found=0" in message
+        assert "iris-bob.loverad.io" in message
+        assert "Cannot iterate over null" not in message
+        assert "jq mapping failed" not in message
+    else:
+        raise AssertionError("Expected RuntimeError when payload has no entry")
+
+
 def test_jq_mapping_error_includes_source_context_and_payload_shape() -> None:
     failed_process = subprocess.CompletedProcess(
         args=["jq"],
