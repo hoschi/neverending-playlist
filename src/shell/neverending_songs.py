@@ -50,6 +50,10 @@ class FetchedPayload:
     byte_count: int
 
 
+class NeverendingSongsEmptyPayloadError(RuntimeError):
+    """Raised when a source payload has no result.entry to map."""
+
+
 def run_neverending_songs_import(
     source_urls: list[str],
     sqlite_db_path: str,
@@ -139,6 +143,8 @@ def run_neverending_songs_import(
                     source_end_iso,
                     safe_resolved_url,
                 )
+            except NeverendingSongsEmptyPayloadError:
+                raise
             except Exception as source_error:
                 raise RuntimeError(
                     "source import failed: "
@@ -178,21 +184,13 @@ def run_neverending_songs_import(
                 details=run_details,
             )
         )
+    except NeverendingSongsEmptyPayloadError as error:
+        logger.error("NeverendingSongs import failed: {error}", error=error)
+        _persist_failed_import_run(sqlite_db_path, len(source_urls), error)
+        return Failure(error)
     except Exception as error:
         logger.exception("NeverendingSongs import failed: {error}", error=error)
-        try:
-            _write_import_run(
-                sqlite_db_path=sqlite_db_path,
-                status=NeverendingSongsImportStatus.FAILED,
-                imported_count=0,
-                source_count=len(source_urls),
-                details=str(error),
-            )
-        except Exception as run_write_error:
-            logger.warning(
-                "Failed to persist FAILED import run: {error}",
-                error=run_write_error,
-            )
+        _persist_failed_import_run(sqlite_db_path, len(source_urls), error)
         return Failure(error)
 
 
@@ -262,7 +260,7 @@ def _map_payload_with_jq(
             f"url={safe_url}, {missing_entry_reason}, payload={payload_summary}"
         )
         logger.error("NeverendingSongs {message}", message=message)
-        raise RuntimeError(message)
+        raise NeverendingSongsEmptyPayloadError(message)
 
     jq_executable = _ensure_jq_available()
 
@@ -461,6 +459,26 @@ def _write_records_to_sqlite(
         return connection.total_changes - before_changes
     finally:
         connection.close()
+
+
+def _persist_failed_import_run(
+    sqlite_db_path: str,
+    source_count: int,
+    error: Exception,
+) -> None:
+    try:
+        _write_import_run(
+            sqlite_db_path=sqlite_db_path,
+            status=NeverendingSongsImportStatus.FAILED,
+            imported_count=0,
+            source_count=source_count,
+            details=str(error),
+        )
+    except Exception as run_write_error:
+        logger.warning(
+            "Failed to persist FAILED import run: {error}",
+            error=run_write_error,
+        )
 
 
 def _write_import_run(
